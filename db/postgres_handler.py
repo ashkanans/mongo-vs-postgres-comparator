@@ -20,8 +20,7 @@ class PostgresDBHandler:
             host=self.host,
             port=self.port,
             user=self.user,
-            password=self.password,
-            dbname=self.database
+            password=self.password
         )
 
     def _get_connection(self):
@@ -147,7 +146,7 @@ class PostgresDBHandler:
             ]
             cursor.executemany(insert_query, values)
             conn.commit()
-            print(f"Inserted {len(records)} records into `reviews`.")
+            # print(f"Inserted {len(records)} records into `reviews`.")
             cursor.close()
             self._close_connection(conn)
         except Exception as e:
@@ -202,3 +201,17 @@ class PostgresDBHandler:
             self._close_connection(conn)
         except Exception as e:
             print(f"Error creating compound index: {e}")
+
+    def is_empty(self, table_name):
+        """Check if a PostgreSQL table is empty."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
+            count = cursor.fetchone()[0]
+            cursor.close()
+            self._close_connection(conn)
+            return count == 0
+        except Exception as e:
+            print(f"Error checking if PostgreSQL table '{table_name}' is empty: {e}")
+            return False

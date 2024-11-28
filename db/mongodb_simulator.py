@@ -20,9 +20,11 @@ class MongoSimulator:
         """Test insertion of records into MongoDB with a progress bar."""
         print("Testing MongoDB insertion...")
         start_time = time.time()
+        individual_times = []
 
         # Use tqdm to create a progress bar
         for record in tqdm(records, desc="Inserting Records", unit="record"):
+            record_start = time.time()  # Record the start time for this insertion
             self.handler.insert_one('reviews', {
                 "product_id": record.get("product/productId"),
                 "user_id": record.get("review/userId"),
@@ -33,11 +35,13 @@ class MongoSimulator:
                 "summary": record.get("review/summary"),
                 "review_text": record.get("review/text")
             })
+            record_end = time.time()
+            individual_times.append(record_end - record_start)
 
         end_time = time.time()
-        total_time = end_time - start_time
+        total_time = end_time - start_time  # Total insertion time
         print(f"Inserted {len(records)} records into MongoDB in {total_time:.2f} seconds.")
-        return total_time
+        return total_time, individual_times
 
     def test_query_performance(self, filter_query):
         """Test query performance in MongoDB."""
@@ -64,3 +68,51 @@ class MongoSimulator:
 
         print(f"Performance comparison: Without Index: {no_index_time:.2f}s, With Index: {index_time:.2f}s.")
         return no_index_time, index_time
+
+    def test_insertion_many(self, records, bulk_size=-1):
+        """Test bulk insertion of records into MongoDB."""
+        print("Testing MongoDB bulk insertion...")
+        start_time = time.time()
+        individual_times = []
+        total_records = len(records)
+
+        # Determine bulk size
+        if bulk_size == -1:
+            # Insert all records as one bulk
+            bulk_size = total_records
+            print("Inserting all records in a single bulk.")
+
+        # Prepare data for insertion
+        formatted_records = [
+            {
+                "product_id": record.get("product/productId"),
+                "user_id": record.get("review/userId"),
+                "profile_name": record.get("review/profileName"),
+                "helpfulness": record.get("review/helpfulness"),
+                "score": float(record.get("review/score", 0)),
+                "review_time": int(record.get("review/time", 0)),
+                "summary": record.get("review/summary"),
+                "review_text": record.get("review/text")
+            }
+            for record in records
+        ]
+
+        # Split the data into chunks based on the bulk size
+        for i in tqdm(range(0, total_records, bulk_size), desc="Inserting Bulk Records", unit="bulk"):
+            bulk_start = time.time()
+            bulk = formatted_records[i:i + bulk_size]
+            self.handler.insert_many('reviews', bulk)
+            bulk_end = time.time()
+            individual_times.append(bulk_end - bulk_start)
+
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f"Inserted {total_records} records into MongoDB in {total_time:.2f} seconds using bulk size {bulk_size}.")
+        return total_time, individual_times
+
+    def ensure_empty(self, collection_name="reviews"):
+        """Ensure that the MongoDB collection is empty."""
+        if not self.handler.is_empty(collection_name):
+            print(f"MongoDB collection '{collection_name}' is not empty. Reinitializing...")
+            self.handler.initialize_collection(collection_name)
+            print(f"MongoDB collection '{collection_name}' has been reinitialized.")

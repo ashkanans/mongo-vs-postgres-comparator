@@ -81,7 +81,7 @@ class MongoDBHandler:
         try:
             self._get_connection()
             self.db[collection_name].insert_many(documents)
-            print(f"Inserted {len(documents)} documents into '{collection_name}'.")
+            # print(f"Inserted {len(documents)} documents into '{collection_name}'.")
         except PyMongoError as e:
             print(f"Error inserting many documents: {e}")
         finally:
@@ -193,3 +193,16 @@ class MongoDBHandler:
             print(f"Error listing indexes: {e}")
         finally:
             self._close_connection()
+
+    def is_empty(self, collection_name):
+        """Check if a MongoDB collection is empty."""
+        try:
+            self._get_connection()
+            count = self.db[collection_name].count_documents({})
+            return count == 0
+        except PyMongoError as e:
+            print(f"Error checking if MongoDB collection '{collection_name}' is empty: {e}")
+            return False
+        finally:
+            if not self.use_persistent_connection:
+                self._close_connection()

@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 
 
-def plot_insertion_times(times, number_of_records):
+def plot_insertion_times(times, number_of_records, use_persistent_connection):
     """
     Plot a bar chart comparing insertion times for PostgreSQL and MongoDB with legend and different bar colors.
 
@@ -19,14 +19,14 @@ def plot_insertion_times(times, number_of_records):
 
     # Label axes and add title
     plt.xlabel("Database")
-    plt.ylabel(f"Insertion Time (seconds) for {number_of_records} records")
-    plt.title("Database Insertion Time Comparison")
+    plt.ylabel(f"Insertion Time (seconds) for {number_of_records} records in bulks")
+    plt.title(f"Database Bulk Insertion Time Comparison (Persistent connection: {use_persistent_connection})")
 
     # Display the plot
     plt.show(block=True)
 
 
-def plot_record_insertion_times(record_times, db_name):
+def plot_record_insertion_times(record_times, db_name, use_persistent_connection):
     """
     Plot the time taken for each record insertion.
 
@@ -37,7 +37,7 @@ def plot_record_insertion_times(record_times, db_name):
     plt.plot(record_times, label=db_name, marker='o')
     plt.xlabel("Record Number")
     plt.ylabel("Insertion Time (seconds)")
-    plt.title(f"Individual Record Insertion Times for {db_name}")
+    plt.title(f"Individual Record Insertion Times for {db_name} (Persistent connection: {use_persistent_connection})")
     plt.legend()
     plt.grid()
     plt.show(block=True)
