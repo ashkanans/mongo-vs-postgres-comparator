@@ -53,7 +53,7 @@ class PostgresDBHandler:
             conn.autocommit = True
             cursor = conn.cursor()
 
-            # Drop the database if it exists
+            # Check if the database exists and drop it
             cursor.execute(
                 sql.SQL("SELECT 1 FROM pg_database WHERE datname = %s;"),
                 [self.database]
@@ -69,7 +69,49 @@ class PostgresDBHandler:
             cursor.close()
             conn.close()
         except Exception as e:
-            print(f"Error processing database: {e}")
+            print(f"Error during database creation: {e}")
+            try:
+                # Connect to the default database to perform cleanup
+                conn = psycopg2.connect(
+                    host=self.host,
+                    port=self.port,
+                    user=self.user,
+                    password=self.password,
+                    dbname="postgres"
+                )
+                conn.autocommit = True
+                cursor = conn.cursor()
+
+                # Drop all tables in case of an error
+                cleanup_conn = psycopg2.connect(
+                    host=self.host,
+                    port=self.port,
+                    user=self.user,
+                    password=self.password,
+                    dbname=self.database  # Connect to the target database
+                )
+                cleanup_conn.autocommit = True
+                cleanup_cursor = cleanup_conn.cursor()
+
+                cleanup_cursor.execute(
+                    """
+                    DO $$ BEGIN
+                        EXECUTE (
+                            SELECT string_agg('DROP TABLE IF EXISTS ' || tablename || ' CASCADE;', ' ')
+                            FROM pg_tables
+                            WHERE schemaname = 'public'
+                        );
+                    END $$;
+                    """
+                )
+                print("All tables dropped successfully.")
+
+                cleanup_cursor.close()
+                cleanup_conn.close()
+                cursor.close()
+                conn.close()
+            except Exception as cleanup_error:
+                print(f"Error during cleanup: {cleanup_error}")
 
     def create_reviews_table(self):
         """Create the `reviews` table."""
