@@ -14,8 +14,14 @@ persistent and non-persistent connection scenarios.
     - [MongoDB Database Creation and Deletion](#mongodb-database-creation-and-deletion)
 4. [Simulations](#simulations)
     - [Insert Simulation](#insert-simulation)
+       - [Insert One](#insert-one)
+       - [Insert Many](#insert-many)
+    - [Delete Simulation](#delete-simulation)
+       - [Delete One](#delete-one)
+       - [Delete Many](#delete-many)
 5. [Comparison Metrics](#comparison-metrics)
-    - [Insertion Speed](#insertion-speed)
+   - [Insertion One Speed](#insertion-one-speed)
+   - [Insertion Many Speed](#bulk-insertion-speed)
 6. [Results](#results)
 7. [Conclusion](#conclusion)
 
@@ -56,6 +62,8 @@ each simulation to ensure a clean environment.
 
 ### Insert Simulation
 
+#### Insert One
+
 Two insertion simulations were conducted:
 
 1. **Without Persistent Connections**:
@@ -67,9 +75,20 @@ Two insertion simulations were conducted:
 
 ---
 
+#### Insert Many
+
+This simulation evaluated the performance of bulk insertion operations using persistent connections. A bulk size of 1000
+records per operation was used, with a total of 100,000 records inserted into both databases.
+
+Persistent connections were chosen for this test, as prior simulations demonstrated the overhead of opening and closing
+connections for each insertion.
+
+
+---
+
 ## Comparison Metrics
 
-### Insertion Speed
+### Insertion One Speed
 
 Insertion speed is a critical metric for evaluating database performance under high write loads. Here are the results:
 
@@ -77,7 +96,7 @@ Insertion speed is a critical metric for evaluating database performance under h
     - MongoDB: **84.26 seconds** (35.60 records/second)
     - PostgreSQL: **141.66 seconds** (21.22 records/second)
 
-   ![Database Insertion Time Comparison (Persistent connection: False)](files/insertion/Database%20Insertion%20Time%20Comparison%20(PC_False).png)
+   ![Database Insertion Time Comparison (Persistent connection: False)](files/insertion/insert%20one/Database%20Insertion%20Time%20Comparison%20(PC_False).png)
 
    **Interpretation**:
     - MongoDB outperformed PostgreSQL significantly in this scenario. The high overhead of establishing a connection for
@@ -87,11 +106,28 @@ Insertion speed is a critical metric for evaluating database performance under h
     - MongoDB: **33.45 seconds** (2989.53 records/second)
     - PostgreSQL: **42.27 seconds** (2366.52 records/second)
 
-   ![Database Insertion Time Comparison (Persistent connection: True)](files/insertion/Database%20Insertion%20Time%20Comparison%20(PC_True).png)
+   ![Database Insertion Time Comparison (Persistent connection: True)](files/insertion/insert%20one/Database%20Insertion%20Time%20Comparison%20(PC_True).png)
 
    **Interpretation**:
     - Persistent connections significantly improved both databases' performance. MongoDB retained its edge due to its
       schema-less nature and lighter write operations.
+
+---
+
+### Bulk Insertion Speed
+
+Bulk insertion performance was measured using a batch size of 1000 records. Here are the results:
+
+- MongoDB: **1.92 seconds** (55.39 bulks/second)
+- PostgreSQL: **15.63 seconds** (6.40 bulks/second)
+
+![Database Bulk Insertion Time Comparison (Persistent connection: True)](files/insertion/insert%20many/Database%20Insert%20Many%20Time%20Comparison%20(PC_True).png)
+
+**Interpretation**:
+
+- MongoDB outperformed PostgreSQL significantly in bulk insertion speed due to its efficient handling of batch
+  operations. PostgreSQL's ACID compliance mechanisms and heavier transaction handling likely contributed to its slower
+  performance.
 
 ---
 
@@ -103,14 +139,14 @@ Analyzing individual record insertion times provided further insights into perfo
 
 1. **MongoDB Without Persistent Connections**:
 
-   ![Individual Record Insertion Times for MongoDB (Persistent connection: False)](files/insertion/Individual%20Record%20Insertion%20Times%20for%20MongoDB%20(PC_False).png)
+   ![Individual Record Insertion Times for MongoDB (Persistent connection: False)](files/insertion/insert%20one/Individual%20Record%20Insertion%20Times%20for%20MongoDB%20(PC_False).png)
 
    **Interpretation**:
     - Consistent performance for most records, with slight spikes likely due to intermittent network or I/O delays.
 
 2. **MongoDB With Persistent Connections**:
 
-   ![Individual Record Insertion Times for MongoDB (Persistent connection: True)](files/insertion/Individual%20Record%20Insertion%20Times%20for%20MongoDB%20(PC_True).png)
+   ![Individual Record Insertion Times for MongoDB (Persistent connection: True)](files/insertion/insert%20one/Individual%20Record%20Insertion%20Times%20for%20MongoDB%20(PC_True).png)
 
    **Interpretation**:
     - Overall lower times with minimal variability. Outliers at the beginning and end might be due to initial connection
@@ -118,18 +154,36 @@ Analyzing individual record insertion times provided further insights into perfo
 
 3. **PostgreSQL Without Persistent Connections**:
 
-   ![Individual Record Insertion Times for PostgreSQL (Persistent connection: False)](files/insertion/Individual%20Record%20Insertion%20Times%20for%20PostreSQL%20(PC_False).png)
+   ![Individual Record Insertion Times for PostgreSQL (Persistent connection: False)](files/insertion/insert%20one/Individual%20Record%20Insertion%20Times%20for%20PostreSQL%20(PC_False).png)
 
    **Interpretation**:
     - Higher variability and frequent spikes due to connection overhead and transaction handling.
 
 4. **PostgreSQL With Persistent Connections**:
 
-   ![Individual Record Insertion Times for PostgreSQL (Persistent connection: True)](files/insertion/Individual%20Record%20Insertion%20Times%20for%20PostreSQL%20(PC_True).png)
+   ![Individual Record Insertion Times for PostgreSQL (Persistent connection: True)](files/insertion/insert%20one/Individual%20Record%20Insertion%20Times%20for%20PostreSQL%20(PC_True).png)
 
    **Interpretation**:
     - More stable performance and significantly reduced variability, with occasional spikes caused by background
       transaction commits.
+
+---
+
+### Bulk Insertion Times
+
+Analyzing bulk insertion times revealed clear performance differences:
+
+- **MongoDB**:
+   - Bulk insertion was rapid, with consistent performance across all batches.
+   - Minimal latency due to its optimized storage engine.
+
+  ![Individual Record Insert Many Times for MongoDB (Persistent connection: True)](files/insertion/insert%20many/Individual%20Record%20Insert%20Many%20Times%20for%20MongoDB%20(PC_True).png)
+
+- **PostgreSQL**:
+   - Bulk insertion exhibited higher variability and slower performance.
+   - Overheads from transaction handling and schema constraints impacted efficiency.
+
+  ![Individual Record Insert Many Times for PostgreSQL (Persistent connection: True)](files/insertion/insert%20many/Individual%20Record%20Insert%20Many%20Times%20for%20PostgreSQL%20(PC_True).png)
 
 ---
 
@@ -154,6 +208,10 @@ Analyzing individual record insertion times provided further insights into perfo
 4. **Persistent Connections**:
     - Both databases benefit from persistent connections, but the difference is more pronounced for PostgreSQL because
       establishing and tearing down a connection is expensive.
+
+5. **Bulk Operation Optimization**:
+   - MongoDB's bulk write operations are streamlined to minimize overhead, with efficient batch processing.
+   - PostgreSQL handles each batch with stricter transactional guarantees, resulting in slower performance.
 
 ---
 
