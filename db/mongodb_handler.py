@@ -86,50 +86,7 @@ class MongoDBHandler:
             print(f"Error inserting many documents: {e}")
         finally:
             self._close_connection()
-
-    def update_one(self, collection_name, filter_query, update_query):
-        """Update a single document in a collection."""
-        try:
-            self._get_connection()
-            result = self.db[collection_name].update_one(filter_query, update_query)
-            print(f"Updated {result.modified_count} document in '{collection_name}'.")
-        except PyMongoError as e:
-            print(f"Error updating one document: {e}")
-        finally:
-            self._close_connection()
-
-    def update_many(self, collection_name, filter_query, update_query):
-        """Update multiple documents in a collection."""
-        try:
-            self._get_connection()
-            result = self.db[collection_name].update_many(filter_query, update_query)
-            print(f"Updated {result.modified_count} documents in '{collection_name}'.")
-        except PyMongoError as e:
-            print(f"Error updating many documents: {e}")
-        finally:
-            self._close_connection()
-
-    def delete_one(self, collection_name, filter_query):
-        """Delete a single document from a collection."""
-        try:
-            self._get_connection()
-            result = self.db[collection_name].delete_one(filter_query)
-            print(f"Deleted {result.deleted_count} document from '{collection_name}'.")
-        except PyMongoError as e:
-            print(f"Error deleting one document: {e}")
-        finally:
-            self._close_connection()
-
-    def delete_many(self, collection_name, filter_query):
-        """Delete multiple documents from a collection."""
-        try:
-            self._get_connection()
-            result = self.db[collection_name].delete_many(filter_query)
-            print(f"Deleted {result.deleted_count} documents from '{collection_name}'.")
-        except PyMongoError as e:
-            print(f"Error deleting many documents: {e}")
-        finally:
-            self._close_connection()
+            return len(documents)
 
     def query_one_field(self, collection_name, field, value, use_index=False):
         """Query documents based on one field."""
@@ -206,3 +163,87 @@ class MongoDBHandler:
         finally:
             if not self.use_persistent_connection:
                 self._close_connection()
+
+    def update_one(self, collection_name, filter_query, update_query):
+        """Update a single document in a collection."""
+        result = None
+        try:
+            self._get_connection()
+            result = self.db[collection_name].update_one(filter_query, update_query)
+            # print(f"Updated {result.modified_count} document in '{collection_name}'.")
+        except PyMongoError as e:
+            print(f"Error updating one document: {e}")
+        finally:
+            self._close_connection()
+            return result.modified_count
+
+    def update_many_bulk(self, collection_name, bulk_queries):
+        """Update multiple documents in bulk in MongoDB using the `$in` operator."""
+        result = None
+        try:
+            self._get_connection()
+
+            # Extract all `_id` values from the bulk queries
+            ids = [query["filter_query"]["_id"] for query in bulk_queries]
+
+            # Construct the filter using `$in`
+            filter_query = {"_id": {"$in": ids}}
+            update_query = {"$inc": {"score": 0.123}}
+
+            # Perform the bulk update
+            result = self.db[collection_name].update_many(filter_query, update_query)
+            # print(f"Updated {result.modified_count} documents in '{collection_name}'.")
+
+        except PyMongoError as e:
+            print(f"Error updating many documents in bulk: {e}")
+        finally:
+            self._close_connection()
+            return result.modified_count
+
+    def delete_one(self, collection_name, filter_query):
+        """Delete a single document in MongoDB."""
+        result = None
+        try:
+            self._get_connection()
+            result = self.db[collection_name].delete_one(filter_query)
+            # print(f"Deleted {result.deleted_count} document from '{collection_name}'.")
+        except PyMongoError as e:
+            print(f"Error deleting one document: {e}")
+        finally:
+            self._close_connection()
+            return result.deleted_count
+
+    def delete_many_bulk(self, collection_name, bulk_queries):
+        """Delete multiple documents in bulk in MongoDB using the `$in` operator."""
+        result = None
+        try:
+            self._get_connection()
+
+            # Extract all `_id` values from the bulk queries
+            ids = [query["filter_query"]["_id"] for query in bulk_queries]
+
+            # Construct the filter using `$in`
+            filter_query = {"_id": {"$in": ids}}
+
+            # Perform the bulk delete
+            result = self.db[collection_name].delete_many(filter_query)
+            # print(f"Deleted {result.deleted_count} documents in '{collection_name}'.")
+
+        except PyMongoError as e:
+            print(f"Error deleting many documents in bulk: {e}")
+        finally:
+            self._close_connection()
+            return result.deleted_count
+
+    def get_all_ids(self, collection_name):
+        """Retrieve all `_id` values from a MongoDB collection."""
+        try:
+            self._get_connection()
+            ids = list(self.db[collection_name].find({}, {"_id": 1}))  # Get only the `_id` field
+            print(f"Retrieved {len(ids)} IDs from the '{collection_name}' collection.")
+            return [str(doc["_id"]) for doc in ids]  # Convert ObjectId to string if needed
+        except PyMongoError as e:
+            print(f"Error fetching IDs from '{collection_name}': {e}")
+            return []
+        finally:
+            self._close_connection()

@@ -114,12 +114,13 @@ class PostgresDBHandler:
                 print(f"Error during cleanup: {cleanup_error}")
 
     def create_reviews_table(self):
-        """Create the `reviews` table."""
+        """Create the `reviews` table with an `id` column as the primary key."""
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
             create_table_sql = """
             CREATE TABLE IF NOT EXISTS reviews (
+                id SERIAL PRIMARY KEY,
                 product_id TEXT,
                 user_id TEXT,
                 profile_name TEXT,
@@ -132,7 +133,7 @@ class PostgresDBHandler:
             """
             cursor.execute(create_table_sql)
             conn.commit()
-            print("Table `reviews` created successfully.")
+            print("Table `reviews` created successfully with an `id` column as the primary key.")
             cursor.close()
             self._close_connection(conn)
         except Exception as e:
@@ -193,19 +194,8 @@ class PostgresDBHandler:
             self._close_connection(conn)
         except Exception as e:
             print(f"Error inserting multiple records: {e}")
-
-    def update_one(self, filter_query, update_query):
-        """Update a single record in the `reviews` table."""
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(update_query, filter_query)
-            conn.commit()
-            print("Updated one record in `reviews`.")
-            cursor.close()
-            self._close_connection(conn)
-        except Exception as e:
-            print(f"Error updating record: {e}")
+        finally:
+            return len(records)
 
     def create_single_column_index(self, table, column):
         """Create an index on a single column."""
@@ -257,3 +247,95 @@ class PostgresDBHandler:
         except Exception as e:
             print(f"Error checking if PostgreSQL table '{table_name}' is empty: {e}")
             return False
+
+    def update_one(self, filter_query, update_query):
+        """Update a single record in the `reviews` table."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(update_query, filter_query)
+            conn.commit()
+            print("Updated one record in `reviews`.")
+            cursor.close()
+            self._close_connection(conn)
+        except Exception as e:
+            print(f"Error updating one record: {e}")
+
+    def update_many_bulk(self, bulk_queries):
+        """Update multiple records in bulk in the `reviews` table using a single query."""
+        ids = None
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            # Create the `WHERE` clause with `OR` filters for the bulk IDs
+            ids = [query["filter_query"][0] for query in bulk_queries]
+            ids_placeholder = ', '.join(map(str, ids))
+            update_query = f"UPDATE reviews SET score = score + 0.123 WHERE id IN ({ids_placeholder})"
+
+            # Execute the bulk update as a single query
+            cursor.execute(update_query)
+            conn.commit()
+            # print(f"Executed bulk update for {len(ids)} records in `reviews`.")
+            cursor.close()
+            self._close_connection(conn)
+        except Exception as e:
+            print(f"Error updating many records in bulk: {e}")
+        finally:
+            return len(ids)
+
+    def delete_one(self, record_id):
+        """Delete a single record from the `reviews` table."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM reviews WHERE id = %s", (record_id,))
+            conn.commit()
+            # print(f"Deleted record with id {record_id} in `reviews`.")
+            cursor.close()
+            self._close_connection(conn)
+        except Exception as e:
+            print(f"Error deleting record with id {record_id}: {e}")
+
+    def delete_many_bulk(self, bulk_ids):
+        """Delete multiple records in bulk from the `reviews` table."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            # Construct the `WHERE` clause using `IN` for bulk deletion
+            ids_placeholder = ', '.join(map(str, bulk_ids))
+            query = f"DELETE FROM reviews WHERE id IN ({ids_placeholder})"
+            cursor.execute(query)
+
+            conn.commit()
+            # print(f"Deleted {len(bulk_ids)} records in `reviews`.")
+            cursor.close()
+            self._close_connection(conn)
+        except Exception as e:
+            print(f"Error deleting records in bulk: {e}")
+        finally:
+            return len(bulk_ids)
+
+    def get_all_review_ids(self):
+        """Retrieve all IDs from the `reviews` table."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            query = "SELECT id FROM reviews;"
+            cursor.execute(query)
+
+            # Fetch all rows (IDs will be returned as a list of tuples)
+            ids = cursor.fetchall()
+
+            # Convert list of tuples to a flat list of IDs
+            id_list = [row[0] for row in ids]
+
+            print(f"Retrieved {len(id_list)} IDs from the `reviews` table.")
+
+            cursor.close()
+            self._close_connection(conn)
+            return id_list
+        except Exception as e:
+            print(f"Error retrieving IDs from `reviews`: {e}")
+            return []
