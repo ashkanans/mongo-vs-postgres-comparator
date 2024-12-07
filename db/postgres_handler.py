@@ -1,18 +1,34 @@
 import psycopg2
 from psycopg2 import sql
+from psycopg2.pool import SimpleConnectionPool
 
 
 class PostgresDBHandler:
-    def __init__(self, config, use_persistent_connection=False):
+    def __init__(self, config, use_persistent_connection=False, use_connection_pooling=True, pool_size=10):
         self.host = config['host']
         self.port = config['port']
         self.user = config['user']
         self.password = config['password']
         self.database = config['database']
         self.use_persistent_connection = use_persistent_connection
-        self.connection = None
+        self.use_connection_pooling = use_connection_pooling
+        self.pool = None
+
         if self.use_persistent_connection:
             self.connection = self._connect()
+        else:
+            self.connection = None
+
+        if self.use_connection_pooling:
+            self.pool = SimpleConnectionPool(
+                minconn=1,
+                maxconn=pool_size,
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+                database=self.database
+            )
 
     def _connect(self):
         """Establish a connection to the PostgreSQL database."""
@@ -20,18 +36,24 @@ class PostgresDBHandler:
             host=self.host,
             port=self.port,
             user=self.user,
-            password=self.password
+            password=self.password,
+            database=self.database
         )
 
     def _get_connection(self):
-        """Get the active connection based on the persistence flag."""
-        if self.use_persistent_connection:
+        """Get a connection, either from the pool, persistent, or temporary."""
+        if self.use_connection_pooling and self.pool:
+            return self.pool.getconn()
+        elif self.use_persistent_connection:
             return self.connection
-        return self._connect()
+        else:
+            return self._connect()
 
     def _close_connection(self, conn):
-        """Close the connection if not using persistent mode."""
-        if not self.use_persistent_connection:
+        """Close the connection if not using persistent mode or return it to the pool."""
+        if self.use_connection_pooling and self.pool:
+            self.pool.putconn(conn)
+        elif not self.use_persistent_connection:
             conn.close()
 
     def close_persistent_connection(self):
@@ -39,6 +61,13 @@ class PostgresDBHandler:
         if self.use_persistent_connection and self.connection:
             self.connection.close()
             self.connection = None
+
+    def close_connection_pool(self):
+        """Close all connections in the connection pool."""
+        if self.use_connection_pooling and self.pool:
+            self.pool.closeall()
+            self.pool = None
+            print("Connection pool closed successfully.")
 
     def create_database(self):
         """Delete and recreate the database."""

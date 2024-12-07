@@ -1,4 +1,7 @@
 # figures.py
+import time
+from datetime import datetime
+
 import plotly.graph_objs as go
 
 
@@ -82,10 +85,32 @@ def build_temp_usage_graph(temp_files, temp_bytes):
 
 def build_time_series_line_chart(historical_metrics, metric_key, title):
     # Extract timestamps and values
-    timestamps = [m['timestamp'] for m in historical_metrics]
+    timestamps = [datetime.fromtimestamp(m['timestamp']).strftime('%Y-%m-%d %H:%M:%S') for m in historical_metrics]
     values = [m[metric_key] for m in historical_metrics]
 
     return go.Figure(
         data=[go.Scatter(x=timestamps, y=values, mode='lines+markers')],
-        layout=go.Layout(title=title, xaxis_title="Time", yaxis_title=metric_key)
+        layout=go.Layout(
+            title=title,
+            xaxis_title="Time",
+            yaxis_title=metric_key,
+            xaxis=dict(
+                tickangle=45  # Rotate x-axis labels for better readability
+            )
+        )
+    )
+
+
+def build_commits_per_second_chart(historical_metrics):
+    """Build a time-series chart for commits per second."""
+    timestamps = [time.strftime('%H:%M:%S', time.localtime(m['timestamp'])) for m in historical_metrics]
+    commits_per_second = [m['commits_per_second'] for m in historical_metrics]
+
+    return go.Figure(
+        data=[go.Scatter(x=timestamps, y=commits_per_second, mode='lines+markers', name='Commits/sec')],
+        layout=go.Layout(
+            title='Transactions Committed per Second',
+            xaxis_title='Time',
+            yaxis_title='Commits/sec'
+        )
     )
