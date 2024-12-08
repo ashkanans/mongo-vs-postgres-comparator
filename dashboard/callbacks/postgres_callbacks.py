@@ -24,7 +24,11 @@ metrics_fetcher = PostgresMetrics()
         Output("pg-user-tables-stats", "figure"),
         Output("pg-stat-activity-rows", "children"),
         Output("pg-cache-hit-ratio-gauge", "figure"),
-        Output("pg-cache-hit-ratio-line", "figure")
+        Output("pg-cache-hit-ratio-line", "figure"),
+        Output("pg-checkpoints-over-time", "figure"),
+        Output("pg-buffer-writes-stacked", "figure"),
+        Output("pg-index-usage-bar", "figure"),
+        Output("pg-index-usage-combined", "figure")
     ],
     Input("pg-interval", "n_intervals"),
     [State('historical-data', 'data'), State('baseline-data', 'data')]
@@ -78,6 +82,12 @@ def update_postgres_figures(n_intervals, historical_data, baseline_data):
         cache_hit_ratio_gauge_fig = PostgresFigures.cache_hit_ratio_gauge(data['cache_hit_ratio'])
         cache_hit_ratio_line_fig = PostgresFigures.cache_hit_ratio_over_time_chart(historical_data)
 
+        checkpoints_over_time_fig = PostgresFigures.checkpoints_over_time_chart(historical_data)
+        buffer_writes_stacked_fig = PostgresFigures.buffer_writes_stacked_chart(data)
+
+        index_usage_bar_fig = PostgresFigures.index_usage_bar_chart(data['index_usage'])
+        index_usage_combined_fig = PostgresFigures.index_usage_combined_chart(data['index_usage'])
+
         logger.info("Figures updated successfully")
         return [
             historical_data,
@@ -93,7 +103,11 @@ def update_postgres_figures(n_intervals, historical_data, baseline_data):
             user_tables_stats_fig,
             activity_rows,
             cache_hit_ratio_gauge_fig,
-            cache_hit_ratio_line_fig
+            cache_hit_ratio_line_fig,
+            checkpoints_over_time_fig,
+            buffer_writes_stacked_fig,
+            index_usage_bar_fig,
+            index_usage_combined_fig
         ]
 
     except Exception as e:

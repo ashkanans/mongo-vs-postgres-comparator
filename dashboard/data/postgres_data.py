@@ -126,3 +126,21 @@ class PostgresDataFetcher:
             LIMIT 10;
         """
         return self._execute_query(query)
+
+    def fetch_pg_index_usage(self):
+        query = """
+            SELECT
+                t.relname AS table_name,
+                t.seq_scan,
+                t.seq_tup_read,
+                t.idx_scan,
+                t.idx_tup_fetch,
+                i.indexrelname AS index_name,
+                i.idx_scan AS index_scans,
+                i.idx_tup_read AS index_tuples_read
+            FROM
+                pg_stat_user_tables t
+            JOIN
+                pg_stat_user_indexes i ON t.relid = i.relid;
+        """
+        return self._execute_query(query)

@@ -50,6 +50,20 @@ postgres_layout = html.Div([
                  style={'width': '49%', 'display': 'inline-block', 'marginLeft': '1%'})
     ], style={'marginBottom': '40px'}),
 
+    # Row 7: Checkpoints and Buffer Writes
+    html.Div([
+        html.Div([dcc.Graph(id='pg-checkpoints-over-time')], style={'width': '49%', 'display': 'inline-block'}),
+        html.Div([dcc.Graph(id='pg-buffer-writes-stacked')],
+                 style={'width': '49%', 'display': 'inline-block', 'marginLeft': '1%'})
+    ], style={'marginBottom': '40px'}),
+
+    # Row 8: Index Usage Visualizations
+    html.Div([
+        html.Div([dcc.Graph(id='pg-index-usage-bar')], style={'width': '49%', 'display': 'inline-block'}),
+        html.Div([dcc.Graph(id='pg-index-usage-combined')],
+                 style={'width': '49%', 'display': 'inline-block', 'marginLeft': '1%'})
+    ], style={'marginBottom': '40px'}),
+
     # Interval for updates (e.g. every 1 second)
     dcc.Interval(id='pg-interval', interval=1 * 1000, n_intervals=0)
 ])

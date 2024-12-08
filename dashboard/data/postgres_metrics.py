@@ -21,6 +21,7 @@ class PostgresMetrics:
             pg_stat_activity = self.fetcher.fetch_pg_stat_activity()
             pg_stat_bgwriter = self.fetcher.fetch_pg_stat_bgwriter()
             pg_locks = self.fetcher.fetch_pg_locks()
+            pg_index_usage = self.fetcher.fetch_pg_index_usage()
 
             metrics = {'timestamp': current_timestamp}
 
@@ -38,6 +39,15 @@ class PostgresMetrics:
                 logger.info("Processing pg_stat_user_tables metrics")
                 metrics['user_tables_stats'] = self._process_pg_stat_user_tables(pg_stat_user_tables)
 
+            # Process pg_stat_bgwriter
+            if pg_stat_bgwriter:
+                logger.info("Processing pg_stat_bgwriter metrics")
+                metrics['bgwriter'] = self._process_pg_stat_bgwriter(pg_stat_bgwriter[0])
+
+            if pg_index_usage:
+                logger.info("Processing index usage metrics")
+                metrics['index_usage'] = self._process_pg_index_usage(pg_index_usage)
+
             # Add raw data for other metrics
             metrics.update({
                 'pg_stat_activity': pg_stat_activity,
@@ -51,6 +61,43 @@ class PostgresMetrics:
         except Exception as e:
             logger.error(f"Error fetching PostgreSQL metrics: {e}")
             return {'error': str(e)}
+
+    def _process_pg_index_usage(self, index_usage_data):
+        """Process index usage metrics."""
+        index_usage_stats = []
+        for row in index_usage_data:
+            (table_name, seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, index_name, index_scans,
+             index_tuples_read) = row
+
+            index_usage_stats.append({
+                'table_name': table_name,
+                'seq_scan': seq_scan,
+                'seq_tup_read': seq_tup_read,
+                'idx_scan': idx_scan,
+                'idx_tup_fetch': idx_tup_fetch,
+                'index_name': index_name,
+                'index_scans': index_scans,
+                'index_tuples_read': index_tuples_read
+            })
+
+        return index_usage_stats
+
+    def _process_pg_stat_bgwriter(self, data):
+        """Process pg_stat_bgwriter metrics."""
+        (checkpoints_timed, checkpoints_req, buffers_checkpoint, buffers_clean,
+         maxwritten_clean, buffers_backend, buffers_backend_fsync, buffers_alloc) = data
+
+        return {
+            'checkpoints_timed': checkpoints_timed,
+            'checkpoints_req': checkpoints_req,
+            'buffers_checkpoint': buffers_checkpoint,
+            'buffers_clean': buffers_clean,
+            'maxwritten_clean': maxwritten_clean,
+            'buffers_backend': buffers_backend,
+            'buffers_backend_fsync': buffers_backend_fsync,
+            'buffers_alloc': buffers_alloc
+        }
+
 
     def _process_pg_stat_database(self, data, current_timestamp):
         """Process pg_stat_database metrics and calculate commits per second."""

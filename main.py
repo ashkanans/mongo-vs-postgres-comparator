@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description="Database Performance Comparison Tool")
     parser.add_argument("actions", nargs="+",
                         help="Actions to perform (e.g., setup, insertion, update, delete, visualize)")
-    parser.add_argument("--total_rows", type=int, default=10000, help="Total number of rows/documents to use")
+    parser.add_argument("--total_rows", type=int, default=100000, help="Total number of rows/documents to use")
     parser.add_argument("--bulk_size", type=int, default=1000, help="Bulk size for bulk operations")
     parser.add_argument("--persistent_connection", default=True, action="store_true", help="Use persistent connection")
 

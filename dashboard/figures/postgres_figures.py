@@ -231,3 +231,89 @@ class PostgresFigures:
                 height=400
             )
         )
+
+    @staticmethod
+    def checkpoints_over_time_chart(historical_data):
+        """Create a time series line chart for checkpoints over time."""
+        timestamps = [datetime.fromtimestamp(entry['timestamp']).strftime('%Y-%m-%d %H:%M:%S') for entry in
+                      historical_data]
+        checkpoints_timed = [entry['bgwriter']['checkpoints_timed'] for entry in historical_data]
+        checkpoints_req = [entry['bgwriter']['checkpoints_req'] for entry in historical_data]
+
+        return go.Figure(
+            data=[
+                go.Scatter(x=timestamps, y=checkpoints_timed, mode='lines+markers', name='Checkpoints Timed'),
+                go.Scatter(x=timestamps, y=checkpoints_req, mode='lines+markers', name='Checkpoints Requested')
+            ],
+            layout=go.Layout(
+                title="Checkpoints Over Time",
+                xaxis={"title": "Time", "tickangle": 45},
+                yaxis={"title": "Checkpoints"},
+                margin=dict(l=40, r=40, t=50, b=80),
+                height=400
+            )
+        )
+
+    @staticmethod
+    def buffer_writes_stacked_chart(data):
+        """Create a stacked bar chart for buffer writes."""
+        labels = ['Buffers Checkpoint', 'Buffers Clean', 'Buffers Backend', 'Buffers Backend Fsync']
+        values = [
+            data['bgwriter']['buffers_checkpoint'],
+            data['bgwriter']['buffers_clean'],
+            data['bgwriter']['buffers_backend'],
+            data['bgwriter']['buffers_backend_fsync']
+        ]
+
+        return go.Figure(
+            data=go.Bar(x=labels, y=values, marker_color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']),
+            layout=go.Layout(
+                title="Buffer Writes Breakdown",
+                xaxis={"title": "Buffer Write Types"},
+                yaxis={"title": "Number of Buffers"},
+                margin=dict(l=40, r=40, t=50, b=40),
+                height=400
+            )
+        )
+
+    @staticmethod
+    def index_usage_bar_chart(index_usage_data):
+        """Create a bar chart comparing idx_scan vs seq_scan for each table."""
+        tables = [entry['table_name'] for entry in index_usage_data]
+        seq_scans = [entry['seq_scan'] for entry in index_usage_data]
+        idx_scans = [entry['idx_scan'] for entry in index_usage_data]
+
+        return go.Figure(
+            data=[
+                go.Bar(name='Sequential Scans', x=tables, y=seq_scans, marker_color='orange'),
+                go.Bar(name='Index Scans', x=tables, y=idx_scans, marker_color='blue')
+            ],
+            layout=go.Layout(
+                title="Index vs Sequential Scans per Table",
+                xaxis={"title": "Tables", "tickangle": 45},
+                yaxis={"title": "Number of Scans"},
+                barmode='group',
+                height=500
+            )
+        )
+
+    @staticmethod
+    def index_usage_combined_chart(index_usage_data):
+        """Create a combined chart for index vs sequential scans with tuples returned."""
+        tables = [entry['table_name'] for entry in index_usage_data]
+        seq_tup_read = [entry['seq_tup_read'] for entry in index_usage_data]
+        idx_tup_fetch = [entry['idx_tup_fetch'] for entry in index_usage_data]
+
+        return go.Figure(
+            data=[
+                go.Bar(name='Sequential Tuples Read', x=tables, y=seq_tup_read, marker_color='red'),
+                go.Bar(name='Index Tuples Fetched', x=tables, y=idx_tup_fetch, marker_color='green')
+            ],
+            layout=go.Layout(
+                title="Tuples Returned by Sequential and Index Scans",
+                xaxis={"title": "Tables", "tickangle": 45},
+                yaxis={"title": "Number of Tuples"},
+                barmode='group',
+                height=500
+            )
+        )
