@@ -28,7 +28,8 @@ def render_content(tab):
     return html.Div("No tab selected")
 
 
-from dashboard.callbacks.postgres_callbacks import *
+from dashboard.callbacks.mongodb_callbacks import *
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)

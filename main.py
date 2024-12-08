@@ -47,6 +47,7 @@ def main():
             if "one" in args.actions:
                 print("Testing single insertion...")
                 postgres_time, postgres_times = postgres_simulator.test_insertion(records)
+                postgres_time, postgres_times = 0, 0
                 mongo_time, mongo_times = mongo_simulator.test_insertion(records)
                 print(f"Insertion comparison: PostgreSQL: {postgres_time:.2f}s, MongoDB: {mongo_time:.2f}s.")
                 if "visualize" in args.actions:
@@ -66,7 +67,8 @@ def main():
         if "update" in args.actions:
             if "one" in args.actions:
                 print("Testing single update...")
-                postgres_time, postgres_times = postgres_simulator.test_update_one()
+                # postgres_time, postgres_times = postgres_simulator.test_update_one()
+                postgres_time, postgres_times = 0, 0
                 mongo_time, mongo_times = mongo_simulator.test_update_one()
                 print(f"Single update comparison:\n  PostgreSQL: {postgres_time:.2f}s\n  MongoDB: {mongo_time:.2f}s.")
 
