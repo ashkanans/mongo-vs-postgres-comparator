@@ -277,14 +277,14 @@ class PostgresDBHandler:
             print(f"Error checking if PostgreSQL table '{table_name}' is empty: {e}")
             return False
 
-    def update_one(self, filter_query, update_query):
+    def update_one(self, update_query):
         """Update a single record in the `reviews` table."""
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            cursor.execute(update_query, filter_query)
+            cursor.execute(update_query)
             conn.commit()
-            print("Updated one record in `reviews`.")
+            # print("Updated one record in `reviews`.")
             cursor.close()
             self._close_connection(conn)
         except Exception as e:

@@ -114,3 +114,55 @@ def build_commits_per_second_chart(historical_metrics):
             yaxis_title='Commits/sec'
         )
     )
+
+
+def build_user_table_stats_graph(user_tables_stats):
+    """Build a bar chart for tup_returned and tup_fetched per table."""
+    table_names = [table['table_name'] for table in user_tables_stats]
+    tup_returned = [table['seq_tup_read'] for table in user_tables_stats]
+    tup_fetched = [table['idx_tup_fetch'] for table in user_tables_stats]
+
+    return go.Figure(
+        data=[
+            go.Bar(name='Rows Returned (seq_tup_read)', x=table_names, y=tup_returned),
+            go.Bar(name='Rows Fetched (idx_tup_fetch)', x=table_names, y=tup_fetched)
+        ],
+        layout=go.Layout(
+            title='Rows Returned vs Fetched per Table',
+            xaxis_title='Table Name',
+            yaxis_title='Number of Rows',
+            barmode='group'
+        )
+    )
+
+
+def build_pg_stat_activity_table(pg_stat_activity, max_rows=10):
+    """Build a table to display pg_stat_activity metrics, split into chunks if needed."""
+    headers = ["PID", "User", "State", "Query", "Backend Start", "State Change"]
+    rows = [
+        [
+            str(row[0]),  # pid
+            row[1] if row[1] else 'N/A',  # usename
+            row[2] if row[2] else 'N/A',  # state
+            row[3][:100] if row[3] else 'N/A',  # query (truncated to 100 characters)
+            row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else 'N/A',  # backend_start
+            row[5].strftime('%Y-%m-%d %H:%M:%S') if row[5] else 'N/A'  # state_change
+        ]
+        for row in pg_stat_activity
+    ]
+
+    # Split the rows into chunks of `max_rows`
+    table_chunks = [rows[i:i + max_rows] for i in range(0, len(rows), max_rows)]
+
+    figures = []
+    for i, chunk in enumerate(table_chunks):
+        fig = go.Figure(
+            data=[go.Table(
+                header=dict(values=headers, fill_color='paleturquoise', align='left'),
+                cells=dict(values=[list(col) for col in zip(*chunk)], fill_color='lavender', align='left')
+            )],
+            layout=go.Layout(title=f'Active Connections and Queries (Page {i + 1})')
+        )
+        figures.append(fig)
+
+    return figures

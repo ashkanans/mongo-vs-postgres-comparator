@@ -31,6 +31,7 @@ class PostgresSimulator:
         for record in tqdm(records, desc="Inserting Records", unit="record"):
             record_start = time.time()  # Record the start time for this insertion
             self.handler.insert_one(record)
+            self.inserted += 1
             record_end = time.time()
             individual_times.append(record_end - record_start)
 
@@ -121,11 +122,10 @@ class PostgresSimulator:
 
             # Use tqdm for progress bar
             for review_id in tqdm(ids, desc="Updating Records", unit="record"):
-                filter_query = f"WHERE id = {review_id}"
-                update_query = f"SET score = score + 0.123"
+                update_query = f"UPDATE reviews SET score = score + 0.123 WHERE id = {review_id}"
 
                 op_start = time.time()
-                self.handler.update_one(filter_query, update_query)
+                self.handler.update_one(update_query)
                 op_end = time.time()
 
                 postgres_times.append(op_end - op_start)

@@ -43,6 +43,7 @@ class MongoSimulator:
             })
             record_end = time.time()
             individual_times.append(record_end - record_start)
+            self.inserted += 1
 
         end_time = time.time()
         total_time = end_time - start_time  # Total insertion time
