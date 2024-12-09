@@ -2,7 +2,7 @@ import dash
 from app import app
 from dash import html, dcc
 
-from layouts.mongodb_layout import mongodb_layout
+from layouts.mongo_layout import mongodb_layout
 from layouts.postgres_layout import postgres_layout
 
 # Create the overall layout with tabs
@@ -11,25 +11,26 @@ app.layout = html.Div([
         dcc.Tab(label="PostgreSQL", value="tab-postgres"),
         dcc.Tab(label="MongoDB", value="tab-mongodb")
     ]),
-    html.Div(id="tab-content")
+    # Include both layouts at once
+    html.Div(id="postgres-container", children=postgres_layout, style={'display': 'block'}),
+    html.Div(id="mongodb-container", children=mongodb_layout, style={'display': 'none'})
 ])
 
 
-# Callback to switch tabs
+# Callback to just show/hide the already-loaded layouts
 @app.callback(
-    dash.Output("tab-content", "children"),
+    dash.Output("postgres-container", "style"),
+    dash.Output("mongodb-container", "style"),
     [dash.Input("tabs", "value")]
 )
-def render_content(tab):
-    if tab == "tab-postgres":
-        return postgres_layout  # Return the layout object, not the module
-    elif tab == "tab-mongodb":
-        return mongodb_layout  # Return the layout object, not the module
-    return html.Div("No tab selected")
+def show_hide_tab(value):
+    if value == "tab-postgres":
+        return {'display': 'block'}, {'display': 'none'}
+    else:
+        return {'display': 'none'}, {'display': 'block'}
 
 
-from dashboard.callbacks.mongodb_callbacks import *
-
+from dashboard.callbacks.postgres_callbacks import *
 
 if __name__ == "__main__":
     app.run_server(debug=True)
