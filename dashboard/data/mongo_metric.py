@@ -1,6 +1,6 @@
 import time
 
-from dashboard.data.mongodb_data import MongoDataFetcher
+from dashboard.data.mongo_data import MongoDataFetcher
 from dashboard.logger.logging_config import logger
 
 

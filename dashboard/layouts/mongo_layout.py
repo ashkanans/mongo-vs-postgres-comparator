@@ -3,6 +3,8 @@ from dash import html, dcc
 mongodb_layout = html.Div([
     html.H1("MongoDB Metrics Dashboard", style={'textAlign': 'center', 'marginBottom': '30px'}),
 
+    # html.Button("Refresh MongoDB Data", id="refresh-mongo-button", n_clicks=0),
+
     # Hidden stores to keep track of historical data and baseline data
     dcc.Store(id='historical-mongo-data', storage_type='memory', data=[]),
     dcc.Store(id='baseline-mongo-data', storage_type='memory', data=None),
@@ -39,6 +41,36 @@ mongodb_layout = html.Div([
     html.Div([
         html.Div([dcc.Graph(id='mongo-cache-over-time')], style={'width': '100%', 'display': 'inline-block'})
     ], style={'marginBottom': '40px'}),
+
+    html.Div([
+        html.Div([
+            dcc.Graph(id='mongo-insert-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([
+            dcc.Graph(id='mongo-delete-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'})
+    ]),
+
+    html.Div([
+        html.Div([
+            dcc.Graph(id='mongo-update-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([
+            dcc.Graph(id='mongo-query-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'})
+    ]),
+
+    html.Div([
+        html.Div([
+            dcc.Graph(id='mongo-getmore-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([
+            dcc.Graph(id='mongo-command-fig', style={'height': '400px'}),
+        ], style={'width': '48%', 'display': 'inline-block'})
+    ]),
 
     # Interval for updates (e.g., every 1 second)
     dcc.Interval(id='mongo-interval', interval=1 * 1000, n_intervals=0)

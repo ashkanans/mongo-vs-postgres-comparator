@@ -39,9 +39,15 @@ def make_json_serializable(data):
         Output("mongo-ops-over-time", "figure"),
         Output("mongo-current-operations", "children"),
         Output("mongo-top-metrics", "figure"),
-        Output("mongo-cache-over-time", "figure")
+        Output("mongo-cache-over-time", "figure"),
+        Output("mongo-insert-fig", "figure"),
+        Output("mongo-delete-fig", "figure"),
+        Output("mongo-update-fig", "figure"),
+        Output("mongo-query-fig", "figure"),
+        Output("mongo-getmore-fig", "figure"),
+        Output("mongo-command-fig", "figure")
     ],
-    Input("mongo-interval", "n_intervals"),
+    [Input("mongo-interval", "n_intervals")],
     [State('historical-mongo-data', 'data'), State('baseline-mongo-data', 'data')]
 )
 def update_mongo_figures(n_intervals, historical_data, baseline_data):
@@ -109,6 +115,9 @@ def update_mongo_figures(n_intervals, historical_data, baseline_data):
         top_metrics_fig = MongoFigures.top_metrics_chart(top_metrics)
         cache_over_time_fig = MongoFigures.cache_hit_ratio_over_time(historical_data)
 
+        operations = ['insert', 'delete', 'update', 'query', 'getmore', 'command']
+        figures = [MongoFigures.cumulative_and_rate_graph(historical_data, op) for op in operations]
+
         logger.info("MongoDB figures updated successfully")
         return (
             historical_data,
@@ -121,7 +130,8 @@ def update_mongo_figures(n_intervals, historical_data, baseline_data):
             ops_over_time_fig,
             current_ops_component,
             top_metrics_fig,
-            cache_over_time_fig
+            cache_over_time_fig,
+            *figures
         )
 
     except Exception as e:

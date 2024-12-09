@@ -246,3 +246,57 @@ class MongoFigures:
             yaxis_title="Cache Hit Ratio (%)"
         )
         return fig
+
+    @staticmethod
+    def cumulative_and_rate_graph(historical_data, operation):
+        """
+        Creates a combined chart showing both cumulative and rate data for a specific operation.
+        """
+        # Extract timestamps and operation counters
+        timestamps = [entry['timestamp'] for entry in historical_data]
+        opcounters_list = [entry.get('server_status', {}).get('opcounters', {}) for entry in historical_data]
+
+        # Compute cumulative data
+        cumulative_data = [opc.get(operation, 0) for opc in opcounters_list]
+
+        # Compute rate data (operations per second)
+        rate_data = []
+        for i in range(1, len(cumulative_data)):
+            time_diff = timestamps[i] - timestamps[i - 1]
+            rate = (cumulative_data[i] - cumulative_data[i - 1]) / time_diff if time_diff > 0 else 0
+            rate_data.append(rate)
+
+        # Remove the first timestamp for the rate data
+        rate_timestamps = timestamps[1:]
+
+        # Create the figure
+        fig = go.Figure()
+
+        # Add cumulative line trace
+        fig.add_trace(go.Scatter(
+            x=timestamps,
+            y=cumulative_data,
+            mode='lines+markers',
+            name=f'{operation.capitalize()} - Cumulative',
+            yaxis='y1'
+        ))
+
+        # Add rate line trace
+        fig.add_trace(go.Scatter(
+            x=rate_timestamps,
+            y=rate_data,
+            mode='lines+markers',
+            name=f'{operation.capitalize()} - Rate',
+            yaxis='y2'
+        ))
+
+        # Update layout to have dual y-axes
+        fig.update_layout(
+            title=f"{operation.capitalize()} Operations (Cumulative and Rate)",
+            xaxis_title="Time",
+            yaxis=dict(title="Cumulative Count", side='left'),
+            yaxis2=dict(title="Rate (Ops/sec)", overlaying='y', side='right'),
+            xaxis=dict(tickformat='%Y-%m-%d %H:%M:%S')
+        )
+
+        return fig

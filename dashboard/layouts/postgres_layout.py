@@ -5,6 +5,8 @@ from dash import html, dcc
 postgres_layout = html.Div([
     html.H1("PostgreSQL Metrics Dashboard", style={'textAlign': 'center', 'marginBottom': '30px'}),
 
+    # html.Button("Refresh PostgreSQL Data", id="refresh-pg-button", n_clicks=0),
+
     # Hidden stores to keep track of historical data and baseline data
     dcc.Store(id='historical-data', storage_type='memory', data=[]),
     dcc.Store(id='baseline-data', storage_type='memory', data=None),
@@ -35,9 +37,6 @@ postgres_layout = html.Div([
     html.Div([
         dcc.Graph(id='pg-user-tables-stats')
     ], style={'width': '100%', 'display': 'inline-block', 'marginBottom': '40px'}),
-
-    # Row 5: Active Connections and Queries (pg_stat_activity table)
-    html.Div(id='pg-stat-activity-rows', style={'marginBottom': '40px'}),
 
     # Row 5: Active Connections and Queries (pg_stat_activity table)
     html.Div(id='pg-stat-activity-rows', style={'marginBottom': '40px'}),

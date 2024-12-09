@@ -30,9 +30,8 @@ metrics_fetcher = PostgresMetrics()
         Output("pg-index-usage-bar", "figure"),
         Output("pg-index-usage-combined", "figure")
     ],
-    Input("pg-interval", "n_intervals"),
+    [Input("pg-interval", "n_intervals")],
     [State('historical-data', 'data'), State('baseline-data', 'data')]
-
 )
 def update_postgres_figures(n_intervals, historical_data, baseline_data):
     logger.info(f"Callback triggered: update_postgres_figures (n_intervals={n_intervals})")
