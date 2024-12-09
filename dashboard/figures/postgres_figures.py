@@ -317,3 +317,70 @@ class PostgresFigures:
                 height=500
             )
         )
+
+    @staticmethod
+    def cumulative_and_rate_graph(historical_data, metric_key, title):
+        """
+        Generates a combined cumulative and rate line chart for a given metric.
+
+        Parameters:
+        - historical_data: List of historical metrics.
+        - metric_key: Key for the metric to visualize (e.g., 'tup_inserted').
+        - title: Title of the chart.
+
+        Returns:
+        - A Plotly Figure object.
+        """
+        if not historical_data:
+            return go.Figure()
+
+        # Extract timestamps and convert to datetime objects
+        timestamps = [datetime.utcfromtimestamp(entry['timestamp']) for entry in historical_data]
+        cumulative_values = [entry[metric_key] for entry in historical_data]
+
+        # Calculate rates (difference between consecutive cumulative values)
+        rates = [0] + [
+            (cumulative_values[i] - cumulative_values[i - 1]) / (timestamps[i] - timestamps[i - 1]).total_seconds()
+            for i in range(1, len(cumulative_values))
+        ]
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add cumulative line
+        fig.add_trace(go.Scatter(
+            x=timestamps,
+            y=cumulative_values,
+            mode='lines+markers',
+            name='Cumulative'
+        ))
+
+        # Add rate line
+        fig.add_trace(go.Scatter(
+            x=timestamps,
+            y=rates,
+            mode='lines+markers',
+            name='Rate (per second)',
+            yaxis='y2'
+        ))
+
+        # Update layout to have two y-axes
+        fig.update_layout(
+            title=title,
+            xaxis_title='Time',
+            yaxis=dict(title='Cumulative Count'),
+            yaxis2=dict(
+                title='Rate (per second)',
+                overlaying='y',
+                side='right'
+            ),
+            legend=dict(x=0, y=1),
+            hovermode='x unified',
+            xaxis=dict(
+                tickformat='%H:%M:%S',
+                tickangle=45
+            ),
+            margin=dict(b=100)  # Ensure space for angled labels
+        )
+
+        return fig

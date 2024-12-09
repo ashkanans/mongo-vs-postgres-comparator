@@ -30,7 +30,7 @@ def show_hide_tab(value):
         return {'display': 'none'}, {'display': 'block'}
 
 
-from dashboard.callbacks.postgres_callbacks import *
+from dashboard.callbacks.mongo_callbacks import *
 
 if __name__ == "__main__":
     app.run_server(debug=True)

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import plotly.graph_objs as go
 from dash import dcc
 
@@ -251,23 +253,30 @@ class MongoFigures:
     def cumulative_and_rate_graph(historical_data, operation):
         """
         Creates a combined chart showing both cumulative and rate data for a specific operation.
+
+        Parameters:
+        - historical_data: List of historical metrics.
+        - operation: Operation type (e.g., 'insert', 'delete', 'update', etc.)
+
+        Returns:
+        - A Plotly Figure object.
         """
-        # Extract timestamps and operation counters
-        timestamps = [entry['timestamp'] for entry in historical_data]
+        if not historical_data:
+            return go.Figure()
+
+        # Extract timestamps and convert to datetime objects
+        timestamps = [datetime.utcfromtimestamp(entry['timestamp']) for entry in historical_data]
         opcounters_list = [entry.get('server_status', {}).get('opcounters', {}) for entry in historical_data]
 
         # Compute cumulative data
         cumulative_data = [opc.get(operation, 0) for opc in opcounters_list]
 
         # Compute rate data (operations per second)
-        rate_data = []
+        rate_data = [0]  # Initialize with 0 for the first rate
         for i in range(1, len(cumulative_data)):
-            time_diff = timestamps[i] - timestamps[i - 1]
+            time_diff = (timestamps[i] - timestamps[i - 1]).total_seconds()
             rate = (cumulative_data[i] - cumulative_data[i - 1]) / time_diff if time_diff > 0 else 0
             rate_data.append(rate)
-
-        # Remove the first timestamp for the rate data
-        rate_timestamps = timestamps[1:]
 
         # Create the figure
         fig = go.Figure()
@@ -283,20 +292,26 @@ class MongoFigures:
 
         # Add rate line trace
         fig.add_trace(go.Scatter(
-            x=rate_timestamps,
+            x=timestamps,
             y=rate_data,
             mode='lines+markers',
             name=f'{operation.capitalize()} - Rate',
             yaxis='y2'
         ))
 
-        # Update layout to have dual y-axes
+        # Update layout to have dual y-axes and time-only x-axis
         fig.update_layout(
             title=f"{operation.capitalize()} Operations (Cumulative and Rate)",
             xaxis_title="Time",
             yaxis=dict(title="Cumulative Count", side='left'),
             yaxis2=dict(title="Rate (Ops/sec)", overlaying='y', side='right'),
-            xaxis=dict(tickformat='%Y-%m-%d %H:%M:%S')
+            xaxis=dict(
+                tickformat='%H:%M:%S',  # Display only time in the format Hours:Minutes:Seconds
+                tickangle=45  # Angled tick labels for better readability
+            ),
+            margin=dict(b=100),  # Ensure space for angled labels
+            legend=dict(x=0, y=1),
+            hovermode='x unified'
         )
 
         return fig

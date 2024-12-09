@@ -28,7 +28,12 @@ metrics_fetcher = PostgresMetrics()
         Output("pg-checkpoints-over-time", "figure"),
         Output("pg-buffer-writes-stacked", "figure"),
         Output("pg-index-usage-bar", "figure"),
-        Output("pg-index-usage-combined", "figure")
+        Output("pg-index-usage-combined", "figure"),
+        Output("pg-insert-fig", "figure"),
+        Output("pg-update-fig", "figure"),
+        Output("pg-delete-fig", "figure"),
+        Output("pg-fetched-fig", "figure"),
+        Output("pg-returns-fig", "figure"),
     ],
     [Input("pg-interval", "n_intervals")],
     [State('historical-data', 'data'), State('baseline-data', 'data')]
@@ -87,6 +92,12 @@ def update_postgres_figures(n_intervals, historical_data, baseline_data):
         index_usage_bar_fig = PostgresFigures.index_usage_bar_chart(data['index_usage'])
         index_usage_combined_fig = PostgresFigures.index_usage_combined_chart(data['index_usage'])
 
+        insert_fig = PostgresFigures.cumulative_and_rate_graph(historical_data, 'tup_inserted', 'Insert Operations')
+        update_fig = PostgresFigures.cumulative_and_rate_graph(historical_data, 'tup_updated', 'Update Operations')
+        delete_fig = PostgresFigures.cumulative_and_rate_graph(historical_data, 'tup_deleted', 'Delete Operations')
+        fetched_fig = PostgresFigures.cumulative_and_rate_graph(historical_data, 'tup_fetched', 'Fetched Tuples')
+        returns_fig = PostgresFigures.cumulative_and_rate_graph(historical_data, 'tup_returned', 'Returned Tuples')
+
         logger.info("Figures updated successfully")
         return [
             historical_data,
@@ -106,7 +117,12 @@ def update_postgres_figures(n_intervals, historical_data, baseline_data):
             checkpoints_over_time_fig,
             buffer_writes_stacked_fig,
             index_usage_bar_fig,
-            index_usage_combined_fig
+            index_usage_combined_fig,
+            insert_fig,
+            update_fig,
+            delete_fig,
+            fetched_fig,
+            returns_fig
         ]
 
     except Exception as e:

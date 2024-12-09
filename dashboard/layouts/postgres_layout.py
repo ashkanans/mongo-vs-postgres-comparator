@@ -63,6 +63,21 @@ postgres_layout = html.Div([
                  style={'width': '49%', 'display': 'inline-block', 'marginLeft': '1%'})
     ], style={'marginBottom': '40px'}),
 
+    html.Div([
+        html.Div([dcc.Graph(id='pg-insert-fig')], style={'width': '49%', 'display': 'inline-block'}),
+        html.Div([dcc.Graph(id='pg-update-fig')],
+                 style={'width': '49%', 'display': 'inline-block', 'marginLeft': '1%'})
+    ], style={'marginBottom': '40px'}),
+
+    html.Div([
+        html.Div([dcc.Graph(id='pg-delete-fig')], style={'width': '30%', 'display': 'inline-block'}),
+        html.Div([dcc.Graph(id='pg-fetched-fig')],
+                 style={'width': '30%', 'display': 'inline-block', 'marginLeft': '1%'}),
+        html.Div([dcc.Graph(id='pg-returns-fig')],
+                 style={'width': '30%', 'display': 'inline-block', 'marginLeft': '1%'})
+    ], style={'marginBottom': '40px'}),
+
+
     # Interval for updates (e.g. every 1 second)
     dcc.Interval(id='pg-interval', interval=1 * 1000, n_intervals=0)
 ])
