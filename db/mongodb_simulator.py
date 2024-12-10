@@ -2,7 +2,8 @@ import time
 
 from bson import ObjectId
 from tqdm import tqdm
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import random
 from db.mongodb_handler import MongoDBHandler
 
 
@@ -313,3 +314,66 @@ class MongoSimulator:
             raise Exception(f"Unknown action '{action}' specified for validation.")
 
         print(f"Validation passed for action '{action}'.")
+
+    def test_concurrent_operations(self, concurrency_level=10, num_operations=100):
+        """
+        Perform concurrent read, write, and update operations to test MongoDB under load.
+
+        :param concurrency_level: Number of concurrent threads to use.
+        :param num_operations: Total number of operations to perform.
+        """
+        print(
+            f"Testing concurrent operations with {concurrency_level} threads and {num_operations} total operations...")
+
+        collection_name = "reviews"
+
+        # Retrieve all IDs for read/update operations
+        ids = self.handler.get_all_ids(collection_name)
+        if not ids:
+            print("No IDs found in the `reviews` collection. Ensure data is inserted before running concurrency tests.")
+            return
+
+        # Define tasks: mix of reads, updates, and inserts
+        def read_operation():
+            random_id = ObjectId(random.choice(ids))
+            self.handler.query_one_field(collection_name, "_id", random_id)
+
+        def write_operation():
+            record = {
+                "product_id": f"Product{random.randint(1, 1000)}",
+                "user_id": f"User{random.randint(1, 1000)}",
+                "profile_name": f"User{random.randint(1, 1000)}",
+                "helpfulness": "0/0",
+                "score": random.uniform(1, 5),
+                "review_time": int(time.time()),
+                "summary": "Sample Summary",
+                "review_text": "Sample Review Text"
+            }
+            self.handler.insert_one(collection_name, record)
+
+        def update_operation():
+            random_id = ObjectId(random.choice(ids))
+            filter_query = {"_id": random_id}
+            update_query = {"$inc": {"score": 0.123}}
+            self.handler.update_one(collection_name, filter_query, update_query)
+
+        # Create a mix of read (60%), write (20%), and update (20%) tasks
+        tasks = []
+        for _ in range(num_operations):
+            rand = random.random()
+            if rand < 0.6:
+                tasks.append(read_operation)  # 60% reads
+            elif rand < 0.8:
+                tasks.append(write_operation)  # 20% writes
+            else:
+                tasks.append(update_operation)  # 20% updates
+
+        # Execute tasks concurrently with a progress bar
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=concurrency_level) as executor:
+            futures = [executor.submit(task) for task in tasks]
+            for _ in tqdm(as_completed(futures), total=len(futures), desc="Processing Tasks", unit="task"):
+                pass  # Each future is processed as it completes
+
+        end_time = time.time()
+        print(f"Concurrent operations completed in {end_time - start_time:.2f} seconds.")

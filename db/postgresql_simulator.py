@@ -1,7 +1,7 @@
 import time
-
 from tqdm import tqdm
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import random
 from db.postgres_handler import PostgresDBHandler
 
 
@@ -287,3 +287,69 @@ class PostgresSimulator:
             raise Exception(f"Unknown action '{action}' specified for validation.")
 
         print(f"Validation passed for action '{action}'.")
+
+    def test_concurrent_operations(self, concurrency_level=10, num_operations=100):
+        """
+        Perform concurrent read, write, and update operations to test PostgreSQL under load.
+
+        :param concurrency_level: Number of concurrent threads to use.
+        :param num_operations: Total number of operations to perform.
+        """
+        print(
+            f"Testing concurrent operations with {concurrency_level} threads and {num_operations} total operations...")
+
+        # Retrieve all IDs for read/update operations
+        ids = self.handler.get_all_review_ids()
+        if not ids:
+            print("No IDs found in the `reviews` table. Ensure data is inserted before running concurrency tests.")
+            return
+
+        # Define tasks: mix of reads, updates, and inserts
+        def read_operation():
+            random_id = random.choice(ids)
+            query = f"SELECT * FROM reviews WHERE id = {random_id}"
+            conn = self.handler._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(query)
+            cursor.fetchall()
+            cursor.close()
+            self.handler._close_connection(conn)
+
+        def write_operation():
+            record = {
+                "product/productId": f"Product{random.randint(1, 1000)}",
+                "review/userId": f"User{random.randint(1, 1000)}",
+                "review/profileName": f"User{random.randint(1, 1000)}",
+                "review/helpfulness": "0/0",
+                "review/score": random.uniform(1, 5),
+                "review/time": int(time.time()),
+                "review/summary": "Sample Summary",
+                "review/text": "Sample Review Text"
+            }
+            self.handler.insert_one(record)
+
+        def update_operation():
+            random_id = random.choice(ids)
+            update_query = f"UPDATE reviews SET score = score + 0.123 WHERE id = {random_id}"
+            self.handler.update_one(update_query)
+
+        # Create a mix of read (60%), write (20%), and update (20%) tasks
+        tasks = []
+        for _ in range(num_operations):
+            rand = random.random()
+            if rand < 0.6:
+                tasks.append(read_operation)  # 60% reads
+            elif rand < 0.8:
+                tasks.append(write_operation)  # 20% writes
+            else:
+                tasks.append(update_operation)  # 20% updates
+
+        # Execute tasks concurrently with a progress bar
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=concurrency_level) as executor:
+            futures = [executor.submit(task) for task in tasks]
+            for _ in tqdm(as_completed(futures), total=len(futures), desc="Processing Tasks", unit="task"):
+                pass  # Each future is processed as it completes
+
+        end_time = time.time()
+        print(f"Concurrent operations completed in {end_time - start_time:.2f} seconds.")

@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--total_rows", type=int, default=100000, help="Total number of rows/documents to use")
     parser.add_argument("--bulk_size", type=int, default=1000, help="Bulk size for bulk operations")
     parser.add_argument("--persistent_connection", default=True, action="store_true", help="Use persistent connection")
+    parser.add_argument("--concurrent", action="store_true", help="Run concurrent read/write operations test")
 
     args = parser.parse_args()
 
@@ -134,6 +135,13 @@ def main():
                         bulk_size=bulk_size,
                         use_persistent_connection=use_persistent_connection
                     )
+
+        if "concurrent" in args.actions:
+            concurrency_level = 100
+            num_operations = 1000000
+            postgres_simulator.test_concurrent_operations(concurrency_level, num_operations)
+            mongo_simulator.test_concurrent_operations(concurrency_level, num_operations)
+
     except Exception as e:
         print(f"An error occurred: {str(e)}")
         traceback.print_exc()
