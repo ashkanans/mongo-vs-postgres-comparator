@@ -10,20 +10,27 @@ from dashboard.logger.logging_config import logger
 
 def make_json_serializable(data):
     """
-    Recursively convert non-serializable data types to serializable types.
+    Recursively convert non-serializable data types (e.g., tuples, datetime) to serializable types.
     """
     if isinstance(data, dict):
         return {k: make_json_serializable(v) for k, v in data.items()}
     elif isinstance(data, list):
         return [make_json_serializable(item) for item in data]
+    elif isinstance(data, tuple):
+        # Convert tuple to list
+        return [make_json_serializable(item) for item in data]
+    elif isinstance(data, datetime):
+        # Convert datetime to ISO string
+        return data.isoformat()
     elif isinstance(data, float):
-        # Ensure floats are JSON-serializable, e.g., by limiting precision
+        # Ensure floats are JSON-serializable by limiting precision
         return round(data, 6)
     elif isinstance(data, (int, str, bool)) or data is None:
         return data
     else:
-        # Convert any other types (like Timestamp) to string
+        # Fallback to string conversion for any other types
         return str(data)
+
 
 
 class MetricsCollector:
@@ -58,7 +65,7 @@ class MetricsCollector:
         """Save the metrics to a JSON file with a timestamp and measure write time."""
         filename = f"{filename_prefix}.json"
 
-        # Serialize if the database is Mongo
+        # Ensure metrics are JSON-serializable
         metrics = make_json_serializable(metrics)
 
         start_time = time.perf_counter()

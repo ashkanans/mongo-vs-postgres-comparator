@@ -36,7 +36,6 @@ def show_hide_tab(value):
 from dashboard.callbacks.mongo_callbacks import *
 from dashboard.callbacks.postgres_callbacks import *
 
-
 def start_metrics_collector():
     """Function to start the metrics collector in a separate thread."""
     collector = MetricsCollector()

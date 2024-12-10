@@ -109,24 +109,22 @@ class PostgresFigures:
 
         for entry in pg_stat_activity:
             try:
-                # Parse the string entry into a tuple using ast.literal_eval
-                parsed_entry = ast.literal_eval(entry)
-
-                # Ensure parsed_entry has the expected structure
-                pid = str(parsed_entry[0])
-                user = parsed_entry[1] if parsed_entry[1] else 'N/A'
-                state = parsed_entry[2] if parsed_entry[2] else 'N/A'
-                query = parsed_entry[3][:100] if parsed_entry[3] else 'N/A'
-                backend_start = parsed_entry[4].strftime('%Y-%m-%d %H:%M:%S') if parsed_entry[4] else 'N/A'
-                state_change = parsed_entry[5].strftime('%Y-%m-%d %H:%M:%S') if parsed_entry[5] else 'N/A'
+                # Extract fields directly from the structured data
+                pid = str(entry[0]) if entry[0] is not None else 'N/A'
+                user = entry[1] if entry[1] else 'N/A'
+                state = entry[2] if entry[2] else 'N/A'
+                query = entry[3][:100] if entry[3] else 'N/A'
+                backend_start = entry[4][:19] if entry[4] else 'N/A'
+                state_change = entry[5][:19] if entry[5] else 'N/A'
 
                 # Append the processed row
                 rows.append([pid, user, state, query, backend_start, state_change])
 
             except Exception as e:
-                # Handle parsing errors gracefully
-                rows.append(['Error', 'Error', 'Error', f'Failed to parse: {str(e)}', 'N/A', 'N/A'])
+                # Handle processing errors gracefully
+                rows.append(['Error', 'Error', 'Error', f'Failed to process: {str(e)}', 'N/A', 'N/A'])
 
+        # Split rows into chunks for pagination
         table_chunks = [rows[i:i + max_rows] for i in range(0, len(rows), max_rows)]
         figures = []
 
