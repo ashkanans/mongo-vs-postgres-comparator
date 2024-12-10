@@ -1,42 +1,70 @@
 import logging
 import os
+import inspect
+
+import inspect
+import logging
+
+
+class ClassNameFilter(logging.Filter):
+    def filter(self, record):
+        # Start from the filter frame and move outward.
+        frame = inspect.currentframe()
+        # Move one frame back to exit the current filter() call stack
+        frame = frame.f_back
+
+        while frame:
+            # Identify the module this frame belongs to
+            module_name = frame.f_globals.get("__name__", "")
+
+            # We want to skip frames that are clearly from the logging or inspect modules
+            # or from our ClassNameFilter itself.
+            if (not module_name.startswith("logging") and
+                    module_name != "inspect" and
+                    not (module_name == __name__ and frame.f_code.co_name == 'filter')):
+
+                # Check if 'self' is in locals
+                if "self" in frame.f_locals:
+                    record.classname = frame.f_locals["self"].__class__.__name__
+                    break
+            frame = frame.f_back
+        else:
+            # If we never broke out of the loop, no suitable 'self' was found
+            record.classname = 'N/A'
+
+        return True
 
 
 def setup_logger():
-    # Create logs directory if it doesn't exist
     if not os.path.exists("logs"):
         os.makedirs("logs")
 
-    # Create a logger
     logger = logging.getLogger("PostgresDashboard")
-    logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels of logs
+    logger.setLevel(logging.DEBUG)
 
-    # Check if handlers are already added to avoid duplicate logging
     if not logger.handlers:
-        # Console handler for displaying logs in the console
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)  # Log everything to the console
+        console_handler.setLevel(logging.DEBUG)
 
-        # File handler for writing logs to a file
         file_handler = logging.FileHandler("logs/dashboard.log")
-        file_handler.setLevel(logging.DEBUG)  # Log everything to the file
+        file_handler.setLevel(logging.DEBUG)
 
-        # Define a common log format
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "%(asctime)s - %(name)s - %(classname)s - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
 
-        # Set the formatter for both handlers
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
 
-        # Add the handlers to the logger
         logger.addHandler(console_handler)
         logger.addHandler(file_handler)
+
+        # Add the class name filter to the logger
+        logger.addFilter(ClassNameFilter())
 
     return logger
 
 
-# Initialize the logger
+# Initialize the logger once
 logger = setup_logger()
