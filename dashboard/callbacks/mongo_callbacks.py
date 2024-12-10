@@ -1,5 +1,5 @@
 import plotly.graph_objs as go
-from app import app
+from dashboard.app import app
 from dash import Output, Input, State, html
 
 from dashboard.data.mongo_metric import MongoMetrics

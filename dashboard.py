@@ -1,9 +1,9 @@
 import dash
-from app import app
+from dashboard.app import app
 from dash import html, dcc
 
-from layouts.mongo_layout import mongodb_layout
-from layouts.postgres_layout import postgres_layout
+from dashboard.layouts.mongo_layout import mongodb_layout
+from dashboard.layouts.postgres_layout import postgres_layout
 
 # Create the overall layout with tabs
 app.layout = html.Div([

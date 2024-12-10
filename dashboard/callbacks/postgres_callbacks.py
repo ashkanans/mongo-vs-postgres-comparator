@@ -1,5 +1,5 @@
 import plotly.graph_objs as go
-from app import app
+from dashboard.app import app
 from dash import Output, Input, State, dcc
 
 from dashboard.data.postgres_metrics import PostgresMetrics
