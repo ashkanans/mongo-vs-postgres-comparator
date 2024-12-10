@@ -1,3 +1,5 @@
+import traceback
+
 import plotly.graph_objs as go
 from dashboard.app import app
 from dash import Output, Input, State, dcc
@@ -5,8 +7,9 @@ from dash import Output, Input, State, dcc
 from dashboard.data.postgres_metrics import PostgresMetrics
 from dashboard.figures.postgres_figures import PostgresFigures
 from dashboard.logger.logging_config import logger
+from dashboard.utils.metrics_file_handler import MetricsFileHandler
 
-metrics_fetcher = PostgresMetrics()
+metrics_file_handler = MetricsFileHandler("postgres_metrics.json")
 
 
 @app.callback(
@@ -40,13 +43,16 @@ metrics_fetcher = PostgresMetrics()
 )
 def update_postgres_figures(n_intervals, historical_data, baseline_data):
     logger.info(f"Callback triggered: update_postgres_figures (n_intervals={n_intervals})")
-    try:
-        data = metrics_fetcher.get_metrics()
 
-        if data is None or 'error' in data:
-            logger.error("Error fetching metrics: Returning empty figures")
-            empty_fig = go.Figure()
-            return [empty_fig] * 8
+    historical_data = historical_data if historical_data is not None else []
+    baseline_data = baseline_data if baseline_data is not None else None
+    try:
+        data = metrics_file_handler.read_metrics_from_file()
+
+        if not data:
+            error_message = "Error: No Postgres metrics available. Data fetch failed or is delayed."
+            logger.error(error_message)
+            raise Exception(error_message)
 
         # Set baseline if not already set
         if not baseline_data:
@@ -126,6 +132,32 @@ def update_postgres_figures(n_intervals, historical_data, baseline_data):
         ]
 
     except Exception as e:
-        logger.error(f"Error updating figures: {e}")
+        error_type = type(e).__name__  # Get the exception type
+        tb = traceback.format_exc()  # Get the full traceback as a string
+        logger.error(f"Error updating figures: {error_type} - {e}\nTraceback:\n{tb}")
         empty_fig = go.Figure()
-        return [empty_fig] * 8
+        return [
+            historical_data or [],  # historical-data
+            baseline_data or None,  # baseline-data
+            empty_fig,  # pg-active-connections
+            empty_fig,  # pg-transactions
+            empty_fig,  # pg-blocks
+            empty_fig,  # pg-tuples
+            empty_fig,  # pg-conflicts-deadlocks
+            empty_fig,  # pg-temp-usage
+            empty_fig,  # pg-commits-over-time
+            empty_fig,  # pg-commits-per-second
+            empty_fig,  # pg-user-tables-stats
+            [],  # pg-stat-activity-rows (children)
+            empty_fig,  # pg-cache-hit-ratio-gauge
+            empty_fig,  # pg-cache-hit-ratio-line
+            empty_fig,  # pg-checkpoints-over-time
+            empty_fig,  # pg-buffer-writes-stacked
+            empty_fig,  # pg-index-usage-bar
+            empty_fig,  # pg-index-usage-combined
+            empty_fig,  # pg-insert-fig
+            empty_fig,  # pg-update-fig
+            empty_fig,  # pg-delete-fig
+            empty_fig,  # pg-fetched-fig
+            empty_fig  # pg-returns-fig
+        ]

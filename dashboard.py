@@ -1,9 +1,12 @@
+import threading
+
 import dash
 from dashboard.app import app
 from dash import html, dcc
 
 from dashboard.layouts.mongo_layout import mongodb_layout
 from dashboard.layouts.postgres_layout import postgres_layout
+from dashboard.utils.metrics_collector import MetricsCollector
 
 # Create the overall layout with tabs
 app.layout = html.Div([
@@ -33,5 +36,16 @@ def show_hide_tab(value):
 from dashboard.callbacks.mongo_callbacks import *
 from dashboard.callbacks.postgres_callbacks import *
 
+
+def start_metrics_collector():
+    """Function to start the metrics collector in a separate thread."""
+    collector = MetricsCollector()
+    collector.start()
+
 if __name__ == "__main__":
+    # Start the metrics collector in a separate daemon thread
+    collector_thread = threading.Thread(target=start_metrics_collector, daemon=True)
+    collector_thread.start()
+
+    # Run the Dash server
     app.run_server(debug=True)

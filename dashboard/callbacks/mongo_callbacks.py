@@ -5,26 +5,9 @@ from dash import Output, Input, State, html
 from dashboard.data.mongo_metric import MongoMetrics
 from dashboard.figures.mongo_figures import MongoFigures
 from dashboard.logger.logging_config import logger
+from dashboard.utils.metrics_file_handler import MetricsFileHandler
 
-mongo_metrics_fetcher = MongoMetrics()
-
-
-def make_json_serializable(data):
-    """
-    Recursively convert non-serializable data types to serializable types.
-    """
-    if isinstance(data, dict):
-        return {k: make_json_serializable(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [make_json_serializable(item) for item in data]
-    elif isinstance(data, float):
-        # Ensure floats are JSON-serializable, e.g., by limiting precision
-        return round(data, 6)
-    elif isinstance(data, (int, str, bool)) or data is None:
-        return data
-    else:
-        # Convert any other types (like Timestamp) to string
-        return str(data)
+metrics_file_handler = MetricsFileHandler("mongo_metrics.json")
 
 
 @app.callback(
@@ -53,11 +36,15 @@ def make_json_serializable(data):
 def update_mongo_figures(n_intervals, historical_data, baseline_data):
     logger.info(f"Callback triggered: update_mongo_figures (n_intervals={n_intervals})")
 
+    historical_data = historical_data if historical_data is not None else []
+    baseline_data = baseline_data if baseline_data is not None else None
     try:
-        data = mongo_metrics_fetcher.get_metrics()
+        data = metrics_file_handler.read_metrics_from_file()
 
-        # Ensure data is serializable
-        data = make_json_serializable(data)
+        if not data:
+            error_message = "Error: No MongoDB metrics available. Data fetch failed or is delayed."
+            logger.error(error_message)
+            raise Exception(error_message)
 
         if data is None or 'error' in data:
             logger.error("Error fetching MongoDB metrics: Returning empty figures")
@@ -135,18 +122,27 @@ def update_mongo_figures(n_intervals, historical_data, baseline_data):
         )
 
     except Exception as e:
+
         logger.error(f"Error updating MongoDB figures: {e}")
+
         empty_fig = go.Figure()
+
         return (
             historical_data or [],
             baseline_data or None,
-            empty_fig,
-            empty_fig,
-            empty_fig,
-            empty_fig,
-            empty_fig,
-            empty_fig,
-            html.Div("No current operations"),
-            empty_fig,
-            empty_fig
+            empty_fig,  # mongo-active-connections
+            empty_fig,  # mongo-opcounters
+            empty_fig,  # mongo-network-usage
+            empty_fig,  # mongo-memory-usage
+            empty_fig,  # mongo-db-size
+            empty_fig,  # mongo-ops-over-time
+            html.Div("No current operations"),  # mongo-current-operations
+            empty_fig,  # mongo-top-metrics
+            empty_fig,  # mongo-cache-over-time
+            empty_fig,  # mongo-insert-fig
+            empty_fig,  # mongo-delete-fig
+            empty_fig,  # mongo-update-fig
+            empty_fig,  # mongo-query-fig
+            empty_fig,  # mongo-getmore-fig
+            empty_fig  # mongo-command-fig
         )
