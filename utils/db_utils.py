@@ -1,8 +1,8 @@
 import time
 
 from data.data_utils import read_movies_file
-from db.mongodb_handler import test_mongo_connection
-from db.postgres_handler import test_postgres_connection
+from db.handler.mongodb_handler import test_mongo_connection
+from db.handler.postgres_handler import test_postgres_connection
 
 
 def test_configurations(postgres_config, mongo_config):

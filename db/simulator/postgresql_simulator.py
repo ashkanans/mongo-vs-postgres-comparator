@@ -2,13 +2,13 @@ import time
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
-from db.postgres_handler import PostgresDBHandler
+from db.handler.postgres_handler import PostgresDBHandler
 
 
 class PostgresSimulator:
     def __init__(self, config, use_persistent_connection=False, total_records=None):
         self.total_records = total_records
-        self.handler = PostgresDBHandler(config, use_persistent_connection)
+        self.handler = PostgresDBHandler(config)
         self.modified = 0
         self.inserted = 0
         self.deleted = 0
@@ -353,3 +353,76 @@ class PostgresSimulator:
 
         end_time = time.time()
         print(f"Concurrent operations completed in {end_time - start_time:.2f} seconds.")
+
+    def test_transaction_operations(self, records, simulate_error=False):
+        """
+        Test transactional operations in PostgreSQL.
+
+        :param records: The records to operate on.
+        :param simulate_error: Whether to simulate an error to test rollback behavior.
+        :return: Total execution time.
+        """
+        print("Testing PostgreSQL transactional operations...")
+        conn = None
+        start_time = time.time()
+
+        try:
+            # Step 1: Start a transaction
+            conn = self.handler._get_connection()
+            cursor = conn.cursor()
+            conn.autocommit = False  # Disable autocommit for transactional behavior
+            print("Transaction started...")
+
+            # Step 2: Perform multiple insertions within the transaction with progress bar
+            print("Inserting records within a transaction...")
+            insert_query = """
+            INSERT INTO reviews (
+                product_id, user_id, profile_name, helpfulness, score, review_time, summary, review_text
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+            """
+            for record in tqdm(records, desc="Inserting Records", unit="record"):
+                cursor.execute(insert_query, (
+                    record.get("product/productId"),
+                    record.get("review/userId"),
+                    record.get("review/profileName"),
+                    record.get("review/helpfulness"),
+                    float(record.get("review/score", 0)),
+                    int(record.get("review/time", 0)),
+                    record.get("review/summary"),
+                    record.get("review/text")
+                ))
+
+            # Step 3: Perform updates within the transaction with progress bar
+            print("Updating records within a transaction...")
+            update_query = "UPDATE reviews SET score = score + 0.5 WHERE score >= 4.0;"
+            cursor.execute("SELECT id FROM reviews WHERE score >= 4.0;")
+            ids_to_update = [row[0] for row in cursor.fetchall()]
+
+            for review_id in tqdm(ids_to_update, desc="Updating Records", unit="record"):
+                cursor.execute("UPDATE reviews SET score = score + 0.5 WHERE id = %s;", (review_id,))
+
+            # Step 4: Optionally simulate an error to test rollback
+            if simulate_error:
+                print("Simulating an error to test rollback...")
+                raise Exception("Simulated error for rollback test.")
+
+            # Step 5: Commit the transaction
+            conn.commit()
+            print("Transaction committed successfully.")
+
+        except Exception as e:
+            # Step 6: Rollback the transaction in case of an error
+            if conn:
+                conn.rollback()
+            print(f"Transaction failed: {e}. Rolled back changes.")
+
+        finally:
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"Session ended. Total execution time: {execution_time:.2f} seconds.")
+
+            if conn:
+                cursor.close()
+                self.handler._close_connection(conn)
+
+            return execution_time

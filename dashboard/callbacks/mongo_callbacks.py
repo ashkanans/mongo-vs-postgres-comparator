@@ -2,12 +2,11 @@ import plotly.graph_objs as go
 from dashboard.app import app
 from dash import Output, Input, State, html
 
-from dashboard.data.mongo_metric import MongoMetrics
 from dashboard.figures.mongo_figures import MongoFigures
 from dashboard.logger.logging_config import logger
-from dashboard.utils.metrics_file_handler import MetricsFileHandler
+from dashboard.collector.metrics_file_handler import MetricsFileHandler
 
-metrics_file_handler = MetricsFileHandler("mongo_metrics.json")
+metrics_file_handler = MetricsFileHandler("dashboard//collector//mongo_metrics.json")
 
 
 @app.callback(

@@ -57,13 +57,13 @@ class MetricsCollector:
         logger.info("Metric collection threads started.")
         try:
             while True:
-                time.sleep(1)
+                time.sleep(0.5)
         except KeyboardInterrupt:
             logger.info("Stopping metric collection.")
 
     def save_metrics_to_file(self, metrics, filename_prefix):
         """Save the metrics to a JSON file with a timestamp and measure write time."""
-        filename = f"{filename_prefix}.json"
+        filename = f"dashboard//collector//{filename_prefix}.json"
 
         # Ensure metrics are JSON-serializable
         metrics = make_json_serializable(metrics)

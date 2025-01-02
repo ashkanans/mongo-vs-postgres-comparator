@@ -3,7 +3,7 @@ import unittest
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 
-from db.postgres_handler import PostgresDBHandler
+from db.handler.postgres_handler import PostgresDBHandler
 from utils.config_loader import load_config
 
 

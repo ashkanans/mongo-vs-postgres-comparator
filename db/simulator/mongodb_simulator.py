@@ -4,13 +4,13 @@ from bson import ObjectId
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
-from db.mongodb_handler import MongoDBHandler
+from db.handler.mongodb_handler import MongoDBHandler
 
 
 class MongoSimulator:
     def __init__(self, config, use_persistent_connection=False, total_records=None):
         self.total_records = total_records
-        self.handler = MongoDBHandler(config, use_persistent_connection)
+        self.handler = MongoDBHandler(config)
         self.modified = 0
         self.inserted = 0
         self.deleted = 0
@@ -377,3 +377,70 @@ class MongoSimulator:
 
         end_time = time.time()
         print(f"Concurrent operations completed in {end_time - start_time:.2f} seconds.")
+
+    def test_transaction_operations(self, records, simulate_error=False):
+        """
+        Test transactional operations in MongoDB involving multiple documents.
+
+        :param records: The records to insert within the transaction.
+        :param simulate_error: Whether to simulate an error to test rollback behavior.
+        :return: Total execution time.
+        """
+        print("Testing MongoDB multi-document transactional operations...")
+
+        session = self.handler.client.start_session()
+        collection_name = 'reviews'
+        start_time = time.time()
+
+        try:
+            with session.start_transaction():
+                print("Transaction started...")
+
+                # Insert multiple records with a progress bar
+                print("Inserting records within a transaction...")
+                insert_data = [
+                    {
+                        "product_id": record.get("product/productId"),
+                        "user_id": record.get("review/userId"),
+                        "profile_name": record.get("review/profileName"),
+                        "helpfulness": record.get("review/helpfulness"),
+                        "score": float(record.get("review/score", 0)),
+                        "review_time": int(record.get("review/time", 0)),
+                        "summary": record.get("review/summary"),
+                        "review_text": record.get("review/text")
+                    }
+                    for record in records
+                ]
+                for i in tqdm(range(0, len(insert_data)), desc="Inserting Records", unit="record"):
+                    self.handler.db[collection_name].insert_one(insert_data[i], session=session)
+
+                # Update documents with a progress bar
+                print("Updating records within a transaction...")
+                update_filter = {"score": {"$gte": 4.0}}
+                update_operation = {"$inc": {"score": 0.5}}
+                cursor = self.handler.db[collection_name].find(update_filter, session=session)
+                ids_to_update = [doc["_id"] for doc in cursor]
+
+                for _id in tqdm(ids_to_update, desc="Updating Records", unit="record"):
+                    self.handler.db[collection_name].update_one({"_id": _id}, update_operation, session=session)
+
+                # Optionally simulate an error to test rollback
+                if simulate_error:
+                    print("Simulating an error to test rollback...")
+                    raise Exception("Simulated error for rollback test.")
+
+                # Commit the transaction
+                session.commit_transaction()
+                print("Transaction committed successfully.")
+
+        except Exception as e:
+            # Abort the transaction in case of error
+            session.abort_transaction()
+            print(f"Transaction aborted due to error: {e}")
+
+        finally:
+            session.end_session()
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"Session ended. Total execution time: {execution_time:.2f} seconds.")
+            return execution_time

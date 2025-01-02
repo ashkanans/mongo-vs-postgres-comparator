@@ -4,7 +4,7 @@ from psycopg2.pool import SimpleConnectionPool
 
 
 class PostgresDBHandler:
-    def __init__(self, config, use_persistent_connection=False, use_connection_pooling=False, pool_size=10):
+    def __init__(self, config, use_persistent_connection=False, use_connection_pooling=True, pool_size=100):
         self.host = config['host']
         self.port = config['port']
         self.user = config['user']

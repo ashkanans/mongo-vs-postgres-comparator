@@ -2,21 +2,27 @@ import argparse
 import traceback
 
 from data.data_utils import read_movies_file
-from db.mongodb_simulator import MongoSimulator
-from db.postgresql_simulator import PostgresSimulator
+from db.simulator.mongodb_simulator import MongoSimulator
+from db.simulator.postgresql_simulator import PostgresSimulator
 from utils.config_loader import load_config
 from utils.visualization import plot_results
 
 
 def main():
-    # Set up argument parsing
     parser = argparse.ArgumentParser(description="Database Performance Comparison Tool")
-    parser.add_argument("actions", nargs="+",
-                        help="Actions to perform (e.g., setup, insertion, update, delete, visualize)")
+    parser.add_argument(
+        "actions",
+        nargs="+",
+        help="Actions to perform (e.g., setup, insertion, update, delete, visualize, bulk, many, one)",
+    )
     parser.add_argument("--total_rows", type=int, default=100000, help="Total number of rows/documents to use")
     parser.add_argument("--bulk_size", type=int, default=1000, help="Bulk size for bulk operations")
     parser.add_argument("--persistent_connection", default=True, action="store_true", help="Use persistent connection")
     parser.add_argument("--concurrent", action="store_true", help="Run concurrent read/write operations test")
+    parser.add_argument("--simulate_error", default=False, action="store_true",
+                        help="Simulate an error in transaction to test rollback")
+    parser.add_argument("--one", action="store_true", help="Update a single record")
+    parser.add_argument("--many", action="store_true", help="Update multiple records")
 
     args = parser.parse_args()
 
@@ -48,7 +54,6 @@ def main():
             if "one" in args.actions:
                 print("Testing single insertion...")
                 postgres_time, postgres_times = postgres_simulator.test_insertion(records)
-                postgres_time, postgres_times = 0, 0
                 mongo_time, mongo_times = mongo_simulator.test_insertion(records)
                 print(f"Insertion comparison: PostgreSQL: {postgres_time:.2f}s, MongoDB: {mongo_time:.2f}s.")
                 if "visualize" in args.actions:
@@ -66,7 +71,7 @@ def main():
                                  bulk_size=bulk_size, use_persistent_connection=use_persistent_connection)
 
         if "update" in args.actions:
-            if "one" in args.actions:
+            if args.one:
                 print("Testing single update...")
                 # postgres_time, postgres_times = postgres_simulator.test_update_one()
                 postgres_time, postgres_times = 0, 0
@@ -83,7 +88,7 @@ def main():
                         use_persistent_connection=use_persistent_connection
                     )
 
-            if "many" in args.actions:
+            if args.many:
                 bulk_size = args.bulk_size
                 print(f"Testing bulk update with bulk size {bulk_size}...")
                 postgres_time, postgres_times = postgres_simulator.test_update_many(bulk_size)
@@ -102,7 +107,7 @@ def main():
                     )
 
         if "deletion" in args.actions:
-            if "one" in args.actions:
+            if args.one:
                 print("Testing single delete...")
                 postgres_time, postgres_times = postgres_simulator.test_delete_one()
                 mongo_time, mongo_times = mongo_simulator.test_delete_one()
@@ -118,7 +123,7 @@ def main():
                         use_persistent_connection=use_persistent_connection
                     )
 
-            if "many" in args.actions:
+            if args.many:
                 bulk_size = args.bulk_size
                 print(f"Testing bulk delete with bulk size {bulk_size}...")
                 postgres_time, postgres_times = postgres_simulator.test_delete_many(bulk_size)
@@ -141,6 +146,14 @@ def main():
             num_operations = 1000000
             postgres_simulator.test_concurrent_operations(concurrency_level, num_operations)
             mongo_simulator.test_concurrent_operations(concurrency_level, num_operations)
+
+        if "transaction" in args.actions:
+            print("Testing transactional operations in MongoDB...")
+            simulate_error = args.simulate_error
+            postgres_time = postgres_simulator.test_transaction_operations(records, simulate_error)
+            print(f"Transaction execution completed\n  PostgreSQL: {postgres_time:.2f}s\n")
+
+
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")

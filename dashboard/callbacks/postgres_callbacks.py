@@ -4,12 +4,11 @@ import plotly.graph_objs as go
 from dashboard.app import app
 from dash import Output, Input, State, dcc
 
-from dashboard.data.postgres_metrics import PostgresMetrics
 from dashboard.figures.postgres_figures import PostgresFigures
 from dashboard.logger.logging_config import logger
-from dashboard.utils.metrics_file_handler import MetricsFileHandler
+from dashboard.collector.metrics_file_handler import MetricsFileHandler
 
-metrics_file_handler = MetricsFileHandler("postgres_metrics.json")
+metrics_file_handler = MetricsFileHandler("dashboard//collector//postgres_metrics.json")
 
 
 @app.callback(
