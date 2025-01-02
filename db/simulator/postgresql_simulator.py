@@ -3,6 +3,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
 from db.handler.postgres_handler import PostgresDBHandler
+from utils.db_utils import normalize_record
 
 
 class PostgresSimulator:
@@ -19,26 +20,6 @@ class PostgresSimulator:
         self.handler.create_database()
         self.handler.create_reviews_table()
         print("PostgreSQL setup complete.")
-
-    def test_insertion(self, records):
-        self.validate_before_executing("insertion")
-        """Test insertion of records into PostgreSQL with a progress bar."""
-        print("Testing PostgreSQL insertion...")
-        start_time = time.time()
-        individual_times = []
-
-        # Use tqdm to create a progress bar
-        for record in tqdm(records, desc="Inserting Records", unit="record"):
-            record_start = time.time()  # Record the start time for this insertion
-            self.handler.insert_one(record)
-            self.inserted += 1
-            record_end = time.time()
-            individual_times.append(record_end - record_start)
-
-        end_time = time.time()
-        total_time = end_time - start_time
-        print(f"Inserted {len(records)} records into PostgreSQL in {total_time:.2f} seconds.")
-        return total_time, individual_times
 
     def test_query_performance(self, query):
         """Test query performance in PostgreSQL."""
@@ -71,24 +52,42 @@ class PostgresSimulator:
         print(f"Performance comparison: Without Index: {no_index_time:.2f}s, With Index: {index_time:.2f}s.")
         return no_index_time, index_time
 
+    # Insertion methods
+    def test_insertion(self, records):
+        self.validate_before_executing("insertion")
+        print("Testing PostgreSQL insertion...")
+        start_time = time.time()
+        individual_times = []
+
+        for record in tqdm(records, desc="Inserting Records", unit="record"):
+            normalized_record = normalize_record(record)
+            record_start = time.time()
+            self.handler.insert_one(normalized_record)
+            self.inserted += 1
+            record_end = time.time()
+            individual_times.append(record_end - record_start)
+
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f"Inserted {len(records)} records into PostgreSQL in {total_time:.2f} seconds.")
+        return total_time, individual_times
+
     def test_insertion_many(self, records, bulk_size=-1):
         self.validate_before_executing("insertion")
-        """Test bulk insertion of records into PostgreSQL."""
         print("Testing PostgreSQL bulk insertion...")
         start_time = time.time()
         individual_times = []
-        total_records = len(records)
 
-        # Determine bulk size
+        formatted_records = [normalize_record(record) for record in records]
+        total_records = len(formatted_records)
+
         if bulk_size == -1:
-            # Insert all records as one bulk
             bulk_size = total_records
             print("Inserting all records in a single bulk.")
 
-        # Split the data into chunks based on the bulk size
         for i in tqdm(range(0, total_records, bulk_size), desc="Inserting Bulk Records", unit="bulk"):
             bulk_start = time.time()
-            bulk = records[i:i + bulk_size]
+            bulk = formatted_records[i:i + bulk_size]
             self.inserted += self.handler.insert_many(bulk)
             bulk_end = time.time()
             individual_times.append(bulk_end - bulk_start)
@@ -106,28 +105,22 @@ class PostgresSimulator:
             self.handler.create_reviews_table()
             print(f"PostgreSQL table '{table_name}' has been recreated.")
 
+    # Update methods
     def test_update_one(self):
         self.validate_before_executing("update")
-        """Test updating a single record in PostgreSQL by incrementing score for each record."""
         print("Testing PostgreSQL update one...")
         postgres_times = []
 
         try:
-            # Step 1: Get all IDs from the reviews table
             ids = self.handler.get_all_review_ids()
             print(f"Retrieved {len(ids)} IDs from the `reviews` table.")
 
-            # Step 2: Update the score for each ID
             start_time = time.time()
-
-            # Use tqdm for progress bar
             for review_id in tqdm(ids, desc="Updating Records", unit="record"):
                 update_query = f"UPDATE reviews SET score = score + 0.123 WHERE id = {review_id}"
-
                 op_start = time.time()
                 self.handler.update_one(update_query)
                 op_end = time.time()
-
                 postgres_times.append(op_end - op_start)
 
             end_time = time.time()
@@ -142,37 +135,25 @@ class PostgresSimulator:
 
     def test_update_many(self, bulk_size=-1):
         self.validate_before_executing("update")
-        """
-        Test updating multiple records in PostgreSQL with bulk execution.
-        Fetches all IDs, then performs updates in bulks of the specified size using a single query per bulk.
-        """
         print("Testing PostgreSQL update many with bulk size...")
         postgres_times = []
 
         try:
-            # Step 1: Get all IDs from the `reviews` table
             ids = self.handler.get_all_review_ids()
             total_ids = len(ids)
             print(f"Retrieved {total_ids} IDs from the `reviews` table.")
 
             if bulk_size == -1:
-                bulk_size = total_ids  # Execute all updates in a single bulk
+                bulk_size = total_ids
                 print("Executing all updates in a single bulk.")
 
-            # Step 2: Perform updates in bulk
             start_time = time.time()
-
             for i in tqdm(range(0, total_ids, bulk_size), desc="Updating Many Records", unit="bulk"):
                 bulk_ids = ids[i:i + bulk_size]
-
-                # Generate the bulk update queries
                 bulk_queries = [{"filter_query": (review_id,)} for review_id in bulk_ids]
-
-                # Execute the bulk update
                 bulk_start = time.time()
                 self.modified += self.handler.update_many_bulk(bulk_queries)
                 bulk_end = time.time()
-
                 postgres_times.append(bulk_end - bulk_start)
 
             end_time = time.time()

@@ -1,25 +1,6 @@
 import time
 
 from data.data_utils import read_movies_file
-from db.handler.mongodb_handler import test_mongo_connection
-from db.handler.postgres_handler import test_postgres_connection
-
-
-def test_configurations(postgres_config, mongo_config):
-    """Test database configurations for PostgreSQL and MongoDB."""
-    # Test PostgreSQL connection
-    print("Testing PostgreSQL configuration...")
-    if test_postgres_connection(postgres_config):
-        print("PostgreSQL configuration is correct.")
-    else:
-        print("Failed to connect to PostgreSQL. Check your configuration.")
-
-    # Test MongoDB connection
-    print("Testing MongoDB configuration...")
-    if test_mongo_connection(mongo_config):
-        print("MongoDB configuration is correct.")
-    else:
-        print("Failed to connect to MongoDB. Check your configuration.")
 
 
 def measure_insertion_time(db_name, insert_function, config, file_path, max_records):
@@ -53,3 +34,20 @@ def measure_insertion_time(db_name, insert_function, config, file_path, max_reco
     total_time = end_time - start_time
     print(f"{db_name} insertion completed. Total records: {record_count}. Time taken: {total_time:.2f} seconds.")
     return total_time, record_times
+
+
+def normalize_record(record):
+    """
+    Transforms a generic record dictionary into a consistent format
+    for both MongoDB and PostgreSQL.
+    """
+    return {
+        "product_id": record.get("product/productId"),
+        "user_id": record.get("review/userId"),
+        "profile_name": record.get("review/profileName"),
+        "helpfulness": record.get("review/helpfulness"),
+        "score": float(record.get("review/score", 0)),
+        "review_time": int(record.get("review/time", 0)),
+        "summary": record.get("review/summary"),
+        "review_text": record.get("review/text")
+    }

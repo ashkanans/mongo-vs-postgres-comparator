@@ -5,6 +5,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
 from db.handler.mongodb_handler import MongoDBHandler
+from utils.db_utils import normalize_record
 
 
 class MongoSimulator:
@@ -22,34 +23,7 @@ class MongoSimulator:
         self.handler.initialize_collection('reviews')
         print("MongoDB setup complete.")
 
-    def test_insertion(self, records):
-        self.validate_before_executing("insertion")
-        """Test insertion of records into MongoDB with a progress bar."""
-        print("Testing MongoDB insertion...")
-        start_time = time.time()
-        individual_times = []
 
-        # Use tqdm to create a progress bar
-        for record in tqdm(records, desc="Inserting Records", unit="record"):
-            record_start = time.time()  # Record the start time for this insertion
-            self.handler.insert_one('reviews', {
-                "product_id": record.get("product/productId"),
-                "user_id": record.get("review/userId"),
-                "profile_name": record.get("review/profileName"),
-                "helpfulness": record.get("review/helpfulness"),
-                "score": float(record.get("review/score", 0)),
-                "review_time": int(record.get("review/time", 0)),
-                "summary": record.get("review/summary"),
-                "review_text": record.get("review/text")
-            })
-            record_end = time.time()
-            individual_times.append(record_end - record_start)
-            self.inserted += 1
-
-        end_time = time.time()
-        total_time = end_time - start_time  # Total insertion time
-        print(f"Inserted {len(records)} records into MongoDB in {total_time:.2f} seconds.")
-        return total_time, individual_times
 
     def test_query_performance(self, filter_query):
         """Test query performance in MongoDB."""
@@ -77,36 +51,39 @@ class MongoSimulator:
         print(f"Performance comparison: Without Index: {no_index_time:.2f}s, With Index: {index_time:.2f}s.")
         return no_index_time, index_time
 
+    # Insertion methods
+    def test_insertion(self, records):
+        self.validate_before_executing("insertion")
+        print("Testing MongoDB insertion...")
+        start_time = time.time()
+        individual_times = []
+
+        for record in tqdm(records, desc="Inserting Records", unit="record"):
+            normalized_record = normalize_record(record)
+            record_start = time.time()
+            self.handler.insert_one('reviews', normalized_record)
+            record_end = time.time()
+            individual_times.append(record_end - record_start)
+            self.inserted += 1
+
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f"Inserted {len(records)} records into MongoDB in {total_time:.2f} seconds.")
+        return total_time, individual_times
+
     def test_insertion_many(self, records, bulk_size=-1):
         self.validate_before_executing("insertion")
-        """Test bulk insertion of records into MongoDB."""
         print("Testing MongoDB bulk insertion...")
         start_time = time.time()
         individual_times = []
-        total_records = len(records)
 
-        # Determine bulk size
+        formatted_records = [normalize_record(record) for record in records]
+        total_records = len(formatted_records)
+
         if bulk_size == -1:
-            # Insert all records as one bulk
             bulk_size = total_records
             print("Inserting all records in a single bulk.")
 
-        # Prepare data for insertion
-        formatted_records = [
-            {
-                "product_id": record.get("product/productId"),
-                "user_id": record.get("review/userId"),
-                "profile_name": record.get("review/profileName"),
-                "helpfulness": record.get("review/helpfulness"),
-                "score": float(record.get("review/score", 0)),
-                "review_time": int(record.get("review/time", 0)),
-                "summary": record.get("review/summary"),
-                "review_text": record.get("review/text")
-            }
-            for record in records
-        ]
-
-        # Split the data into chunks based on the bulk size
         for i in tqdm(range(0, total_records, bulk_size), desc="Inserting Bulk Records", unit="bulk"):
             bulk_start = time.time()
             bulk = formatted_records[i:i + bulk_size]
@@ -126,30 +103,23 @@ class MongoSimulator:
             self.handler.initialize_collection(collection_name)
             print(f"MongoDB collection '{collection_name}' has been reinitialized.")
 
+    # Update methods
     def test_update_one(self):
         self.validate_before_executing("update")
-        """
-        Test updating a single document in MongoDB by incrementing the score for each document.
-        """
         print("Testing MongoDB update one...")
         mongo_times = []
 
         try:
-            # Step 1: Get all IDs from the 'reviews' collection
             ids = self.handler.get_all_ids("reviews")
-            print(f"Retrieved {len(ids)} IDs from the 'reviews' collection.")
+            print(f"Retrieved {len(ids)} IDs from the `reviews` collection.")
 
-            # Step 2: Update each document individually
             start_time = time.time()
-
             for doc_id in tqdm(ids, desc="Updating One Document", unit="query"):
-                filter_query = {"_id": doc_id}
+                filter_query = {"_id": ObjectId(doc_id)}
                 update_query = {"$inc": {"score": 0.123}}
-
                 op_start = time.time()
                 self.handler.update_one("reviews", filter_query, update_query)
                 op_end = time.time()
-
                 mongo_times.append(op_end - op_start)
 
             end_time = time.time()
@@ -164,37 +134,25 @@ class MongoSimulator:
 
     def test_update_many(self, bulk_size=-1):
         self.validate_before_executing("update")
-        """
-        Test updating multiple documents in MongoDB with bulk execution.
-        Fetches all IDs, then performs updates in bulks of the specified size using a single operation per bulk.
-        """
         print("Testing MongoDB update many with bulk size...")
         mongo_times = []
 
         try:
-            # Step 1: Get all IDs from the 'reviews' collection
             ids = self.handler.get_all_ids("reviews")
             total_ids = len(ids)
-            print(f"Retrieved {total_ids} IDs from the 'reviews' collection.")
+            print(f"Retrieved {total_ids} IDs from the `reviews` collection.")
 
             if bulk_size == -1:
-                bulk_size = total_ids  # Execute all updates in a single bulk
+                bulk_size = total_ids
                 print("Executing all updates in a single bulk.")
 
-            # Step 2: Perform updates in bulk
             start_time = time.time()
-
             for i in tqdm(range(0, total_ids, bulk_size), desc="Updating Many Documents", unit="bulk"):
                 bulk_ids = ids[i:i + bulk_size]
-
-                # Generate the bulk update queries (filter queries for all `_id` values in the bulk)
                 bulk_queries = [{"filter_query": {"_id": ObjectId(doc_id)}} for doc_id in bulk_ids]
-
-                # Execute the bulk update
                 bulk_start = time.time()
                 self.handler.update_many_bulk("reviews", bulk_queries)
                 bulk_end = time.time()
-
                 mongo_times.append(bulk_end - bulk_start)
 
             end_time = time.time()
