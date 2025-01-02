@@ -4,7 +4,7 @@ from psycopg2.pool import SimpleConnectionPool
 
 
 class PostgresDBHandler:
-    def __init__(self, config, use_persistent_connection=False, use_connection_pooling=True, pool_size=100):
+    def __init__(self, config, use_persistent_connection=True, use_connection_pooling=True, pool_size=100):
         self.host = config['host']
         self.port = config['port']
         self.user = config['user']
@@ -178,14 +178,14 @@ class PostgresDBHandler:
                 product_id, user_id, profile_name, helpfulness, score, review_time, summary, review_text
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """, (
-                record.get("product/productId"),
-                record.get("review/userId"),
-                record.get("review/profileName"),
-                record.get("review/helpfulness"),
-                float(record.get("review/score", 0)),
-                int(record.get("review/time", 0)),
-                record.get("review/summary"),
-                record.get("review/text")
+                record.get("product_id"),
+                record.get("user_id"),
+                record.get("profile_name"),
+                record.get("helpfulness"),
+                float(record.get("score", 0)),
+                int(record.get("review_time", 0)),
+                record.get("summary"),
+                record.get("review_text")
             ))
             conn.commit()
             cursor.close()
@@ -205,14 +205,14 @@ class PostgresDBHandler:
             """
             values = [
                 (
-                    record.get("product/productId"),
-                    record.get("review/userId"),
-                    record.get("review/profileName"),
-                    record.get("review/helpfulness"),
-                    float(record.get("review/score", 0)),
-                    int(record.get("review/time", 0)),
-                    record.get("review/summary"),
-                    record.get("review/text")
+                    record.get("product_id"),
+                    record.get("user_id"),
+                    record.get("profile_name"),
+                    record.get("helpfulness"),
+                    float(record.get("score", 0)),
+                    int(record.get("review_time", 0)),
+                    record.get("summary"),
+                    record.get("review_text")
                 )
                 for record in records
             ]

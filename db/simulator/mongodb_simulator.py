@@ -1,6 +1,7 @@
 import time
 
 from bson import ObjectId
+from pymongo.errors import PyMongoError
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
@@ -22,8 +23,6 @@ class MongoSimulator:
         self.handler.create_mongo_db()
         self.handler.initialize_collection('reviews')
         print("MongoDB setup complete.")
-
-
 
     def test_query_performance(self, filter_query):
         """Test query performance in MongoDB."""
@@ -103,7 +102,7 @@ class MongoSimulator:
             self.handler.initialize_collection(collection_name)
             print(f"MongoDB collection '{collection_name}' has been reinitialized.")
 
-    # Update methods
+    ########### Update methods ###########
     def test_update_one(self):
         self.validate_before_executing("update")
         print("Testing MongoDB update one...")
@@ -273,6 +272,10 @@ class MongoSimulator:
 
         print(f"Validation passed for action '{action}'.")
 
+    ########### Concurrency methods ###########
+    def read_one_by_id(self, doc_id):
+        self.handler.query_one_field("reviews", "_id", ObjectId(doc_id))
+
     def test_concurrent_operations(self, concurrency_level=10, num_operations=100):
         """
         Perform concurrent read, write, and update operations to test MongoDB under load.
@@ -293,8 +296,8 @@ class MongoSimulator:
 
         # Define tasks: mix of reads, updates, and inserts
         def read_operation():
-            random_id = ObjectId(random.choice(ids))
-            self.handler.query_one_field(collection_name, "_id", random_id)
+            chosen_id = random.choice(ids)
+            self.read_one_by_id(chosen_id)
 
         def write_operation():
             record = {
@@ -402,3 +405,65 @@ class MongoSimulator:
             execution_time = end_time - start_time
             print(f"Session ended. Total execution time: {execution_time:.2f} seconds.")
             return execution_time
+
+    # Complex Queries
+    def test_complex_query(self):
+        """
+        Demonstrates an aggregation pipeline in MongoDB that mimics a multi-join
+        or a more complex data retrieval pattern. Measures execution time and
+        returns any results for verification.
+        """
+        print("Testing MongoDB complex query...")
+
+        # Build an aggregation pipeline that joins:
+        # 1. 'reviews' on { user_id, product_id }
+        # 2. 'users'   on { user_id }
+        # 3. 'products' on { _id } or product_id
+        # Adjust localField/foreignField to match your actual schemas.
+        pipeline = [
+            # Filter reviews with score > 3.0
+            {"$match": {"score": {"$gt": 3.0}}},
+
+            # "Join" with the users collection
+            # If reviews.user_id is the same as users.user_id (text field),
+            # set foreignField = "user_id".
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "user_id",  # Field in 'reviews'
+                    "foreignField": "user_id",  # Corresponding field in 'users'
+                    "as": "user"
+                }
+            },
+
+            # "Join" with the products collection
+            # If reviews.product_id references products._id, use foreignField = "_id".
+            # If there is another matching field (e.g. products.product_id), adjust accordingly.
+            {
+                "$lookup": {
+                    "from": "products",
+                    "localField": "product_id",
+                    "foreignField": "_id",
+                    "as": "product"
+                }
+            },
+
+            # Sort results by score in descending order
+            {"$sort": {"score": -1}},
+
+            # Limit to 100 documents
+            {"$limit": 100}
+        ]
+
+        start_time = time.time()
+        try:
+            # Run the aggregation pipeline on the 'reviews' collection
+            results = list(self.handler.db["reviews"].aggregate(pipeline))
+        except PyMongoError as e:
+            print(f"Error executing aggregation pipeline: {e}")
+            results = []
+        end_time = time.time()
+
+        total_time = end_time - start_time
+        print(f"Complex query completed in {total_time:.4f} seconds, returned {len(results)} documents.")
+        return total_time, results

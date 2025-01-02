@@ -1,3 +1,4 @@
+import random
 import time
 
 from data.data_utils import read_movies_file

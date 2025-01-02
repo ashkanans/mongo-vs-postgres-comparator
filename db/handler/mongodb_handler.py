@@ -1,9 +1,10 @@
+from bson import ObjectId
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
 
 
 class MongoDBHandler:
-    def __init__(self, config, use_persistent_connection=False):
+    def __init__(self, config, use_persistent_connection=True):
         self.host = config['host']
         self.port = config['port']
         self.database = config['database']
@@ -246,4 +247,33 @@ class MongoDBHandler:
             print(f"Error fetching IDs from '{collection_name}': {e}")
             return []
         finally:
+            self._close_connection()
+
+    def get_all_user_ids(self, collection_name, field_name="_id"):
+        """
+        Retrieve all unique values of a specified field from a MongoDB collection.
+
+        Parameters:
+            collection_name (str): Name of the MongoDB collection.
+            field_name (str): Name of the field to retrieve (default is `_id`).
+
+        Returns:
+            list: List of field values, converted to strings if they are ObjectIds.
+        """
+        try:
+            # Establish connection to the database
+            self._get_connection()
+
+            # Retrieve distinct values for the specified field
+            field_values = self.db[collection_name].distinct(field_name)
+            print(
+                f"Retrieved {len(field_values)} unique values for field '{field_name}' from the '{collection_name}' collection.")
+
+            # Convert ObjectId to string if necessary
+            return [str(value) if isinstance(value, ObjectId) else value for value in field_values]
+        except PyMongoError as e:
+            print(f"Error fetching values for field '{field_name}' from '{collection_name}': {e}")
+            return []
+        finally:
+            # Ensure the connection is closed
             self._close_connection()

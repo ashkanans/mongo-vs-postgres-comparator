@@ -142,8 +142,8 @@ def main():
                     )
 
         if "concurrent" in args.actions:
-            concurrency_level = 100
-            num_operations = 1000000
+            concurrency_level = 10
+            num_operations = 100000
             postgres_simulator.test_concurrent_operations(concurrency_level, num_operations)
             mongo_simulator.test_concurrent_operations(concurrency_level, num_operations)
 
@@ -153,7 +153,10 @@ def main():
             postgres_time = postgres_simulator.test_transaction_operations(records, simulate_error)
             print(f"Transaction execution completed\n  PostgreSQL: {postgres_time:.2f}s\n")
 
-
+        if "complex_queries" in args.actions:
+            print("Testing complex queries operations...")
+            postgres_simulator.test_complex_query()
+            mongo_simulator.test_complex_query()
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")

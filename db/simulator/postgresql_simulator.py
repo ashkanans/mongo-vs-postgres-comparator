@@ -269,6 +269,15 @@ class PostgresSimulator:
 
         print(f"Validation passed for action '{action}'.")
 
+    # Cocurrency test methods
+    def read_one_by_id(self, record_id):
+        conn = self.handler._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM reviews WHERE id = %s", (record_id,))
+        cursor.fetchall()
+        cursor.close()
+        self.handler._close_connection(conn)
+
     def test_concurrent_operations(self, concurrency_level=10, num_operations=100):
         """
         Perform concurrent read, write, and update operations to test PostgreSQL under load.
@@ -287,14 +296,8 @@ class PostgresSimulator:
 
         # Define tasks: mix of reads, updates, and inserts
         def read_operation():
-            random_id = random.choice(ids)
-            query = f"SELECT * FROM reviews WHERE id = {random_id}"
-            conn = self.handler._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(query)
-            cursor.fetchall()
-            cursor.close()
-            self.handler._close_connection(conn)
+            chosen_id = random.choice(ids)
+            self.read_one_by_id(chosen_id)
 
         def write_operation():
             record = {
@@ -407,3 +410,43 @@ class PostgresSimulator:
                 self.handler._close_connection(conn)
 
             return execution_time
+
+    # Complex Queries
+    def test_complex_query(self):
+        """
+        Demonstrates a multi-table join or a complex subquery.
+        Measures execution time and returns any results for verification.
+        """
+        print("Testing PostgreSQL complex query...")
+
+        # Adjusted query based on the updated table structures
+        query = """
+        SELECT r.id AS review_id, r.score, u.name AS user_name, p.product_name
+        FROM reviews r
+        JOIN users u ON r.user_id = u.user_id
+        JOIN products p ON r.product_id = p.product_id
+        WHERE r.score > 3.0
+        ORDER BY r.score DESC
+        LIMIT 100;
+        """
+
+        # Measure query execution time
+        start_time = time.time()
+        conn = self.handler._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query)
+            results = cursor.fetchall()
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            results = []
+        finally:
+            cursor.close()
+            self.handler._close_connection(conn)
+
+        end_time = time.time()
+
+        total_time = end_time - start_time
+        print(f"Complex query completed in {total_time:.4f} seconds, returned {len(results)} rows.")
+        return total_time, results
